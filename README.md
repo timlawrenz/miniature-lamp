@@ -234,7 +234,8 @@ python examples/simple_poc.py image.jpg
 
 ## Documentation
 
-- **[ComfyUI Node](ComfyUI_DINO_FLUX_Upscale/README.md)** - ComfyUI custom node usage
+- **[ComfyUI Installation](docs/INSTALLATION.md)** - ComfyUI node installation and troubleshooting
+- **[ComfyUI Usage](docs/COMFYUI_NODE_README.md)** - ComfyUI node parameters and examples
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[DEBUG_PLAN.md](docs/DEBUG_PLAN.md)** - Systematic debugging approach
 - **[DINO_CONDITIONING.md](docs/DINO_CONDITIONING.md)** - DINO parameter guide
@@ -243,10 +244,10 @@ python examples/simple_poc.py image.jpg
 
 ## ComfyUI Integration
 
-A ComfyUI custom node is included for visual workflow integration:
+A ComfyUI custom node is included in this repository:
 
 ```bash
-# Install the entire repository to ComfyUI
+# Install the repository to ComfyUI
 cd ComfyUI/custom_nodes/
 git clone https://github.com/timlawrenz/miniature-lamp.git
 cd miniature-lamp
@@ -256,7 +257,9 @@ pip install -r requirements.txt
 
 The node will appear under: `Add Node` → `image` → `upscaling` → `DINO FLUX Upscale`
 
-See [ComfyUI_DINO_FLUX_Upscale/README.md](ComfyUI_DINO_FLUX_Upscale/README.md) for detailed usage.
+**Files**: `__init__.py`, `nodes.py`, `utils.py` in repository root.
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed installation and troubleshooting.
 
 ## How It Works
 
