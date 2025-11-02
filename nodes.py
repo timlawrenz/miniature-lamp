@@ -141,6 +141,22 @@ class DINOFLUXUpscale:
             self.upscaler.dino_extractor = self.dino_extractor
             print("[DINO FLUX Upscale] ✓ DINOv2 model loaded")
     
+    def _estimate_tiles(self, h, w, scale_factor):
+        """Estimate number of tiles for progress bar"""
+        target_h = int(h * scale_factor)
+        target_w = int(w * scale_factor)
+        
+        # Tile configuration from upscaler
+        tile_size = 256
+        overlap = 32
+        stride = tile_size - overlap
+        
+        # Calculate grid dimensions
+        tiles_y = (target_h + stride - 1) // stride
+        tiles_x = (target_w + stride - 1) // stride
+        
+        return tiles_y * tiles_x
+    
     def upscale(self, image, scale_factor, strength, flux_variant, steps,
                 dino_enabled, dino_strength, seed, prompt="high quality, detailed, sharp"):
         """
@@ -161,8 +177,28 @@ class DINOFLUXUpscale:
             Tuple of (upscaled_image_tensor,)
         """
         try:
+            # Import ComfyUI progress utilities
+            try:
+                from comfy.utils import ProgressBar
+                has_progress = True
+            except ImportError:
+                print("[DINO FLUX Upscale] Warning: ComfyUI progress bar not available")
+                has_progress = False
+                ProgressBar = None
+            
             # Initialize models if needed
             self._initialize_models(flux_variant, scale_factor, dino_enabled)
+            
+            # Update scale factor (in case it changed since initialization)
+            if self.upscaler is not None:
+                self.upscaler.scale_factor = scale_factor
+            
+            # Estimate number of tiles for progress bar
+            h, w = image.shape[1:3]
+            num_tiles = self._estimate_tiles(h, w, scale_factor)
+            
+            # Create progress bar (also handles stop button)
+            pbar = ProgressBar(num_tiles) if has_progress else None
             
             # Convert ComfyUI tensor to PIL (process first image in batch)
             print(f"[DINO FLUX Upscale] Processing image {image.shape}")
@@ -175,7 +211,7 @@ class DINOFLUXUpscale:
                 dino_features = self.dino_extractor.extract_features(pil_image)
                 print(f"[DINO FLUX Upscale] ✓ Extracted {dino_features.shape[0]} patch features")
             
-            # Upscale using our existing code
+            # Upscale using our existing code with progress callback
             print(f"[DINO FLUX Upscale] Upscaling {scale_factor}x with strength={strength}...")
             result_pil = self.upscaler.upscale(
                 pil_image,
@@ -185,7 +221,8 @@ class DINOFLUXUpscale:
                 num_steps=steps,
                 strength=strength,
                 seed=seed,
-                dino_conditioning_strength=dino_strength
+                dino_conditioning_strength=dino_strength,
+                progress_callback=lambda: pbar.update(1) if pbar else None
             )
             
             # Convert result back to ComfyUI tensor

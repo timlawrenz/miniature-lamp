@@ -49,7 +49,7 @@ class BasicUpscaler:
         upscaled = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(upscaled)
     
-    def _upscale_with_flux(self, image, dino_features=None, **flux_kwargs):
+    def _upscale_with_flux(self, image, dino_features=None, progress_callback=None, **flux_kwargs):
         """FLUX-based upscaling with optional DINO conditioning"""
         h, w = image.shape[:2]
         
@@ -65,6 +65,15 @@ class BasicUpscaler:
                 scale_factor=self.scale_factor,
                 **flux_kwargs
             )
+            
+            # Update progress for single tile
+            if progress_callback:
+                try:
+                    progress_callback()
+                except Exception:
+                    # Stop signal received
+                    raise
+            
             return result
         
         # Otherwise, use tiled processing
@@ -85,6 +94,14 @@ class BasicUpscaler:
         # Process each tile with FLUX
         upscaled_tiles = []
         for i, (tile, x, y) in enumerate(tiles):
+            # Check for stop signal before processing
+            if progress_callback:
+                try:
+                    progress_callback()
+                except Exception:
+                    print(f"  Stopped at tile {i+1}/{len(tiles)}")
+                    raise
+            
             print(f"  Processing tile {i+1}/{len(tiles)}...")
             
             # Extract DINO features for this tile
