@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import torch
 from PIL import Image
-from comfyui_nodes.nodes import DINOFLUXUpscale
-from comfyui_nodes.utils import pil_to_comfyui, comfyui_to_pil
+from ComfyUI_DINO_FLUX_Upscale.nodes import DINOFLUXUpscale
+from ComfyUI_DINO_FLUX_Upscale.utils import pil_to_comfyui, comfyui_to_pil
 
 
 def test_tensor_conversion():

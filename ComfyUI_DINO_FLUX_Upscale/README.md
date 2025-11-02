@@ -12,22 +12,23 @@ Semantic-aware image upscaling using DINOv2 vision features and FLUX diffusion m
 
 ## Installation
 
-### Option 1: Install in ComfyUI (Recommended)
+### Option 1: Install from Repository (Recommended)
 
 ```bash
 cd ComfyUI/custom_nodes/
-git clone https://github.com/your-username/miniature-lamp.git ComfyUI_DINO_FLUX_Upscale
-cd ComfyUI_DINO_FLUX_Upscale
+git clone https://github.com/timlawrenz/miniature-lamp.git
+cd miniature-lamp
 pip install -r requirements.txt
 ```
 
-### Option 2: Development Installation
+The node will be auto-discovered in the `ComfyUI_DINO_FLUX_Upscale/` subdirectory.
 
-```bash
-# In this repository
-cd comfyui_nodes/
-# ComfyUI will auto-discover nodes in this directory
-```
+### Option 2: Manual Installation
+
+1. Download or clone this repository
+2. Copy the `ComfyUI_DINO_FLUX_Upscale/` folder to `ComfyUI/custom_nodes/`
+3. Install requirements: `pip install -r requirements.txt` (from main repo)
+4. Restart ComfyUI
 
 ## Usage
 
@@ -149,6 +150,7 @@ comfyui_nodes/
 
 ## Links
 
-- [Main Repository](https://github.com/your-username/miniature-lamp)
+- [Main Repository](https://github.com/timlawrenz/miniature-lamp)
+- [Standalone Upscaler](../README.md)
 - [Documentation](../docs/)
-- [Issues](https://github.com/your-username/miniature-lamp/issues)
+- [Issues](https://github.com/timlawrenz/miniature-lamp/issues)

@@ -15,9 +15,9 @@ This project combines tiled upscaling with DINO semantic embeddings to maintain 
 
 ## Current Status
 
-- ✅ **Phase 1 Complete:** DINO feature extraction and basic upscaling
-- ✅ **Phase 2 Complete:** FLUX diffusion integration with DINO conditioning
-- 📋 **Phase 3 Planned:** ComfyUI custom node implementation
+- ✅ **Standalone Upscaler Complete:** DINO + FLUX upscaling with tiling
+- ✅ **ComfyUI Node Complete:** Ready-to-use custom node (see `ComfyUI_DINO_FLUX_Upscale/`)
+- 📋 **Future:** ComfyUI Manager packaging, additional features
 
 ## Installation
 
@@ -234,11 +234,29 @@ python examples/simple_poc.py image.jpg
 
 ## Documentation
 
+- **[ComfyUI Node](ComfyUI_DINO_FLUX_Upscale/README.md)** - ComfyUI custom node usage
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[DEBUG_PLAN.md](docs/DEBUG_PLAN.md)** - Systematic debugging approach
 - **[DINO_CONDITIONING.md](docs/DINO_CONDITIONING.md)** - DINO parameter guide
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guidelines
 - **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Technical details
+
+## ComfyUI Integration
+
+A ComfyUI custom node is included for visual workflow integration:
+
+```bash
+# Install the entire repository to ComfyUI
+cd ComfyUI/custom_nodes/
+git clone https://github.com/timlawrenz/miniature-lamp.git
+cd miniature-lamp
+pip install -r requirements.txt
+# Restart ComfyUI
+```
+
+The node will appear under: `Add Node` → `image` → `upscaling` → `DINO FLUX Upscale`
+
+See [ComfyUI_DINO_FLUX_Upscale/README.md](ComfyUI_DINO_FLUX_Upscale/README.md) for detailed usage.
 
 ## How It Works
 
