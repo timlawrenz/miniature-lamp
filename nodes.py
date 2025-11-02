@@ -146,14 +146,16 @@ class DINOFLUXUpscale:
         target_h = int(h * scale_factor)
         target_w = int(w * scale_factor)
         
-        # Tile configuration from upscaler
-        tile_size = 256
-        overlap = 32
-        stride = tile_size - overlap
+        # Match the upscaler's tile calculation logic
+        output_tile_size = 512
+        input_tile_size = int(output_tile_size / scale_factor)
+        input_tile_size = max(256, input_tile_size)
+        overlap = max(16, int(input_tile_size / 8))
+        stride = input_tile_size - overlap
         
-        # Calculate grid dimensions
-        tiles_y = (target_h + stride - 1) // stride
-        tiles_x = (target_w + stride - 1) // stride
+        # Calculate grid dimensions on INPUT image
+        tiles_y = (h + stride - 1) // stride
+        tiles_x = (w + stride - 1) // stride
         
         return tiles_y * tiles_x
     

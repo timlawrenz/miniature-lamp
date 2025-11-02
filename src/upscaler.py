@@ -83,12 +83,22 @@ class BasicUpscaler:
         target_h = int(h * self.scale_factor)
         target_w = int(w * self.scale_factor)
         
-        # Process in smaller tiles (256x256 input = 512x512 output for safety)
-        tile_size = 256
-        overlap = 32
+        # Calculate input tile size based on scale factor
+        # Goal: output tiles should be ~512x512 for FLUX processing
+        # So input_tile_size = output_tile_size / scale_factor
+        output_tile_size = 512
+        input_tile_size = int(output_tile_size / self.scale_factor)
+        
+        # Ensure minimum tile size (don't go below 256 for quality)
+        input_tile_size = max(256, input_tile_size)
+        
+        # Scale overlap proportionally (typically 1/8 of tile size)
+        overlap = max(16, int(input_tile_size / 8))
+        
+        print(f"  Using {input_tile_size}x{input_tile_size} input tiles (→ {int(input_tile_size * self.scale_factor)}x{int(input_tile_size * self.scale_factor)} output)")
         
         # Generate tiles from original image
-        tiles = self.generate_tiles(image, tile_size=tile_size, overlap=overlap)
+        tiles = self.generate_tiles(image, tile_size=input_tile_size, overlap=overlap)
         print(f"Processing {len(tiles)} tiles...")
         
         # Process each tile with FLUX
@@ -135,7 +145,7 @@ class BasicUpscaler:
         result = self.stitch_tiles(
             upscaled_tiles,
             output_size=(target_w, target_h),
-            tile_size=int(tile_size * self.scale_factor),
+            tile_size=int(input_tile_size * self.scale_factor),
             overlap=int(overlap * self.scale_factor)
         )
         
