@@ -9,8 +9,8 @@ from typing import Optional, Union
 
 
 class BasicUpscaler:
-    def __init__(self, flux_pipeline=None):
-        self.scale_factor = 2
+    def __init__(self, flux_pipeline=None, scale_factor=2.0):
+        self.scale_factor = scale_factor
         self.flux_pipeline = flux_pipeline
     
     def upscale(self, image, dino_features=None, use_flux=False, **flux_kwargs):
@@ -45,13 +45,67 @@ class BasicUpscaler:
     
     def _upscale_with_flux(self, image, dino_features=None, **flux_kwargs):
         """FLUX-based upscaling with optional DINO conditioning"""
-        # For now, process as single tile
-        # TODO: Implement tiled processing for large images
-        result = self.flux_pipeline.upscale_tile(
-            image,
-            dino_features=dino_features,
-            **flux_kwargs
+        h, w = image.shape[:2]
+        
+        # If image is small enough, process directly
+        if h <= 512 and w <= 512:
+            result = self.flux_pipeline.upscale_tile(
+                image,
+                dino_features=dino_features,
+                **flux_kwargs
+            )
+            return result
+        
+        # Otherwise, use tiled processing
+        print(f"Image too large ({w}x{h}), using tiled processing...")
+        
+        # Calculate target dimensions (ensure integers)
+        target_h = int(h * self.scale_factor)
+        target_w = int(w * self.scale_factor)
+        
+        # Process in smaller tiles (256x256 input = 512x512 output for safety)
+        tile_size = 256
+        overlap = 32
+        
+        # Generate tiles from original image
+        tiles = self.generate_tiles(image, tile_size=tile_size, overlap=overlap)
+        print(f"Processing {len(tiles)} tiles...")
+        
+        # Process each tile with FLUX
+        upscaled_tiles = []
+        for i, (tile, x, y) in enumerate(tiles):
+            print(f"  Processing tile {i+1}/{len(tiles)}...")
+            
+            # Upscale this tile with FLUX
+            upscaled_tile = self.flux_pipeline.upscale_tile(
+                tile,
+                dino_features=None,  # TODO: Extract DINO features for this tile region
+                scale_factor=self.scale_factor,
+                **flux_kwargs
+            )
+            
+            # Convert back to numpy for stitching
+            upscaled_tile_np = np.array(upscaled_tile)
+            
+            # Scale coordinates for upscaled image (ensure integers)
+            upscaled_tiles.append((
+                upscaled_tile_np,
+                int(x * self.scale_factor),
+                int(y * self.scale_factor)
+            ))
+            
+            # Clear GPU memory between tiles
+            self.flux_pipeline.clear_memory()
+        
+        # Stitch upscaled tiles together
+        print("Stitching tiles...")
+        result = self.stitch_tiles(
+            upscaled_tiles,
+            output_size=(target_w, target_h),
+            tile_size=int(tile_size * self.scale_factor),
+            overlap=int(overlap * self.scale_factor)
         )
+        
         return result
     
     def generate_tiles(self, image, tile_size=512, overlap=64):
@@ -104,14 +158,26 @@ class BasicUpscaler:
         result = np.zeros((h, w, 3), dtype=np.float32)
         weights = np.zeros((h, w), dtype=np.float32)
         
-        # Create blending weights for overlap regions
-        blend_mask = self._create_blend_mask(tile_size, overlap)
-        
-        for tile, x, y in tiles:
+        for i, (tile, x, y) in enumerate(tiles):
             tile_h, tile_w = tile.shape[:2]
-            mask = blend_mask[:tile_h, :tile_w]
             
-            result[y:y+tile_h, x:x+tile_w] += tile * mask[:, :, np.newaxis]
+            # Ensure tile doesn't exceed canvas boundaries
+            max_h = min(tile_h, h - y)
+            max_w = min(tile_w, w - x)
+            
+            # Crop tile if it exceeds boundaries
+            if max_h < tile_h or max_w < tile_w:
+                tile = tile[:max_h, :max_w]
+                tile_h, tile_w = tile.shape[:2]
+            
+            # Create blend mask matching the exact (possibly cropped) tile dimensions
+            mask = self._create_blend_mask(tile_h, tile_w, overlap)
+            
+            # Convert to proper shape for broadcasting
+            mask_3d = mask[:, :, np.newaxis]
+            
+            # Apply mask
+            result[y:y+tile_h, x:x+tile_w] += tile * mask_3d
             weights[y:y+tile_h, x:x+tile_w] += mask
         
         # Normalize by weights
@@ -121,19 +187,27 @@ class BasicUpscaler:
         
         return Image.fromarray(result)
     
-    def _create_blend_mask(self, tile_size, overlap):
+    def _create_blend_mask(self, height, width, overlap):
         """Create a blending mask for smooth tile transitions"""
-        mask = np.ones((tile_size, tile_size), dtype=np.float32)
+        mask = np.ones((height, width), dtype=np.float32)
         
         if overlap > 0:
-            fade = np.linspace(0, 1, overlap)
-            # Fade in from left
-            mask[:, :overlap] *= fade[np.newaxis, :]
-            # Fade in from top
-            mask[:overlap, :] *= fade[:, np.newaxis]
-            # Fade out to right
-            mask[:, -overlap:] *= fade[np.newaxis, ::-1]
-            # Fade out to bottom
-            mask[-overlap:, :] *= fade[::-1, np.newaxis]
+            # Calculate fade region size (use smaller of overlap or available space)
+            fade_h = min(overlap, height)
+            fade_w = min(overlap, width)
+            
+            if fade_h > 0:
+                fade = np.linspace(0, 1, fade_h)
+                # Fade in from top
+                mask[:fade_h, :] *= fade[:, np.newaxis]
+                # Fade out to bottom
+                mask[-fade_h:, :] *= fade[::-1, np.newaxis]
+            
+            if fade_w > 0:
+                fade = np.linspace(0, 1, fade_w)
+                # Fade in from left
+                mask[:, :fade_w] *= fade[np.newaxis, :]
+                # Fade out to right
+                mask[:, -fade_w:] *= fade[np.newaxis, ::-1]
         
         return mask

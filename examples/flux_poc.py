@@ -29,6 +29,7 @@ def main():
                        help="Denoising strength (0.0-1.0)")
     parser.add_argument("--seed", type=int, help="Random seed for reproducibility")
     parser.add_argument("--no-dino", action="store_true", help="Skip DINO feature extraction")
+    parser.add_argument("--scale", type=float, default=2.0, help="Upscale factor (default: 2.0, e.g., 1.1 for 10%% larger)")
     
     args = parser.parse_args()
     
@@ -81,7 +82,7 @@ def main():
             model_path=args.model_path,
             enable_offloading=True
         )
-        upscaler = BasicUpscaler(flux_pipeline=flux_pipeline)
+        upscaler = BasicUpscaler(flux_pipeline=flux_pipeline, scale_factor=args.scale)
         
         print("Upscaling with FLUX diffusion...")
         upscaled = upscaler.upscale(

@@ -2,7 +2,7 @@
 FLUX diffusion pipeline for img2img upscaling
 """
 import torch
-from diffusers import FluxPipeline
+from diffusers import FluxImg2ImgPipeline
 from PIL import Image
 import numpy as np
 from typing import Optional, Union
@@ -72,24 +72,51 @@ class FLUXUpscalePipeline:
             model_source = model_id
         
         # Load with fp16 for VRAM efficiency
-        self.pipe = FluxPipeline.from_pretrained(
-            model_source,
-            torch_dtype=torch.float16,
-            variant="fp16" if self.model_path is None else None
-        )
+        # Note: Some models don't have fp16 variants, so we'll try with and without
+        load_kwargs = {
+            "torch_dtype": torch.float16,
+        }
+        
+        # Only add variant for HuggingFace repos that support it
+        if self.model_path is None:
+            # Try loading without variant first (more compatible)
+            try:
+                self.pipe = FluxImg2ImgPipeline.from_pretrained(
+                    model_source,
+                    **load_kwargs
+                )
+            except (ValueError, OSError) as e:
+                # If that fails, try with fp16 variant
+                print(f"Note: Loading without fp16 variant for compatibility")
+                load_kwargs["variant"] = "fp16"
+                self.pipe = FluxImg2ImgPipeline.from_pretrained(
+                    model_source,
+                    **load_kwargs
+                )
+        else:
+            # Local model path
+            self.pipe = FluxImg2ImgPipeline.from_pretrained(
+                model_source,
+                **load_kwargs
+            )
         
         # Apply optimizations
         if self.device == "cuda":
             if self.enable_offloading:
-                # Offload to CPU when not in use
-                self.pipe.enable_model_cpu_offload()
-                print("✓ CPU offloading enabled")
+                # Use sequential CPU offloading - more aggressive memory saving
+                self.pipe.enable_sequential_cpu_offload()
+                print("✓ Sequential CPU offloading enabled (aggressive)")
             else:
                 self.pipe = self.pipe.to(self.device)
             
             # Enable attention slicing for memory efficiency
             self.pipe.enable_attention_slicing(1)
             print("✓ Attention slicing enabled")
+            
+            # Enable VAE slicing to reduce memory during decode
+            if hasattr(self.pipe, 'vae'):
+                self.pipe.vae.enable_slicing()
+                print("✓ VAE slicing enabled")
         else:
             self.pipe = self.pipe.to(self.device)
         
@@ -104,7 +131,8 @@ class FLUXUpscalePipeline:
         guidance_scale: float = 3.5,
         strength: float = 0.3,
         seed: Optional[int] = None,
-        dino_features: Optional[torch.Tensor] = None
+        dino_features: Optional[torch.Tensor] = None,
+        scale_factor: float = 2.0
     ) -> Image.Image:
         """
         Upscale a single tile using FLUX img2img
@@ -128,6 +156,10 @@ class FLUXUpscalePipeline:
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
         
+        # Don't resize here - FLUX img2img works on the input size
+        # The strength parameter controls how much it modifies the image
+        # For upscaling, we'll process at original size and resize after
+        
         # Use default steps if not specified
         if num_steps is None:
             num_steps = self.default_steps[self.variant]
@@ -144,7 +176,7 @@ class FLUXUpscalePipeline:
             # This will be implemented in Stage 2
             pass
         
-        # Run FLUX img2img
+        # Run FLUX img2img at original resolution
         with torch.inference_mode():
             result = self.pipe(
                 prompt=prompt,
@@ -154,6 +186,11 @@ class FLUXUpscalePipeline:
                 strength=strength,
                 generator=generator
             ).images[0]
+        
+        # Now upscale the result by the scale factor
+        output_w = int(result.size[0] * scale_factor)
+        output_h = int(result.size[1] * scale_factor)
+        result = result.resize((output_w, output_h), Image.Resampling.LANCZOS)
         
         return result
     
