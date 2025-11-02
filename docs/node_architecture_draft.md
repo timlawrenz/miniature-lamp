@@ -330,3 +330,38 @@ Will need to add to ComfyUI environment:
 - Documentation & Packaging: 2-3 hours
 
 **Total**: 10-16 hours spread across 3-4 sessions
+
+## Updates Based on User Feedback
+
+### Deferred Features
+- **Seam Fix**: User doesn't use this, defer to v2
+- Focus on core tiling with overlap blending only
+
+### DINOv2 Model Loading
+**How it works**:
+- Loaded via `transformers.AutoModel.from_pretrained("facebook/dinov2-base")`
+- Auto-downloads from HuggingFace on first use (~350MB)
+- Cached in `~/.cache/huggingface/hub/`
+- No manual download needed!
+
+**In ComfyUI Node**:
+- Load in node's `__init__` or lazy-load on first execution
+- Will show "Downloading dinov2-base..." in ComfyUI console
+- Subsequent runs use cached version
+- Users don't need to manually download
+
+### Simplified MVP Scope (Updated)
+
+Remove from MVP:
+- ❌ Seam fix modes
+- ❌ Seam fix parameters
+- ❌ Multiple tiling modes (Linear/Chess/None)
+
+Keep for MVP:
+- ✅ Basic tiled processing with overlap
+- ✅ Gaussian blur blending
+- ✅ DINO extraction (auto-downloads)
+- ✅ FLUX upscaling
+- ✅ Essential parameters only
+
+This simplifies implementation significantly!
