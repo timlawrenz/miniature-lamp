@@ -178,9 +178,14 @@ class FLUXUpscalePipeline:
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
         
-        # Calculate target dimensions
+        # Calculate target dimensions and round to nearest multiple of 8
+        # FLUX requires dimensions divisible by 8
         target_w = int(image.size[0] * scale_factor)
         target_h = int(image.size[1] * scale_factor)
+        
+        # Round to nearest multiple of 8
+        target_w = ((target_w + 4) // 8) * 8
+        target_h = ((target_h + 4) // 8) * 8
         
         # Use default steps if not specified
         if num_steps is None:
