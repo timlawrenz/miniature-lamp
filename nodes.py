@@ -3,25 +3,32 @@ DINO FLUX Upscale ComfyUI Node
 
 Semantic-aware image upscaling using DINOv2 features and FLUX diffusion.
 """
-import sys
 import os
-from pathlib import Path
-
-# Add parent directory to path to import our src modules
-parent_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(parent_dir))
-
+import sys
 import torch
-from .utils import comfyui_to_pil, pil_to_comfyui
+
+# Add current directory to path for imports
+current_dir = os.path.dirname(os.path.realpath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+# Import utils - try relative first, then absolute
+try:
+    from .utils import comfyui_to_pil, pil_to_comfyui
+except ImportError:
+    from utils import comfyui_to_pil, pil_to_comfyui
 
 # Import our existing upscaler components
 try:
+    # Try relative import first (when installed as package)
+    from .src.dino_extractor import DINOFeatureExtractor
+    from .src.flux_pipeline import FLUXUpscalePipeline
+    from .src.upscaler import BasicUpscaler
+except ImportError:
+    # Fall back to absolute import (when loaded by ComfyUI)
     from src.dino_extractor import DINOFeatureExtractor
     from src.flux_pipeline import FLUXUpscalePipeline
     from src.upscaler import BasicUpscaler
-except ImportError as e:
-    print(f"Warning: Could not import miniature-lamp modules: {e}")
-    print("Make sure the src/ directory is in the parent directory")
 
 
 class DINOFLUXUpscale:
