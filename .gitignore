@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Models and weights
+*.pth
+*.ckpt
+*.safetensors
+models/
+checkpoints/
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.gif
+!examples/*.png
+!examples/*.jpg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
