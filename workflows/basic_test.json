@@ -1,0 +1,53 @@
+{
+  "last_node_id": 4,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [50, 100],
+      "size": [315, 314],
+      "title": "Load Image",
+      "properties": {},
+      "widgets_values": ["example.png", "image"]
+    },
+    {
+      "id": 2,
+      "type": "DINOFLUXUpscale",
+      "pos": [400, 100],
+      "size": [315, 542],
+      "title": "DINO FLUX Upscale (Basic)",
+      "properties": {},
+      "widgets_values": [
+        2.0,
+        0.2,
+        1024,
+        "euler",
+        "normal",
+        "schnell",
+        4,
+        true,
+        0.5,
+        42,
+        "high quality, detailed, sharp"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "SaveImage",
+      "pos": [750, 100],
+      "size": [315, 270],
+      "title": "Save Upscaled Image",
+      "properties": {},
+      "widgets_values": ["upscaled_basic"]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "IMAGE"],
+    [2, 2, 0, 3, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
