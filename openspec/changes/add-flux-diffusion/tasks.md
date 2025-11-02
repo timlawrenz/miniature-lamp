@@ -1,9 +1,9 @@
 ## 1. FLUX Model Integration
-- [ ] 1.1 Add FLUX dependencies (diffusers, accelerate, safetensors)
-- [ ] 1.2 Create FLUXPipeline class for img2img
-- [ ] 1.3 Implement model loading with variant selection (schnell/dev)
-- [ ] 1.4 Add VRAM optimization (offloading, fp16, attention slicing)
-- [ ] 1.5 Test basic FLUX img2img upscaling
+- [x] 1.1 Add FLUX dependencies (diffusers, accelerate, safetensors)
+- [x] 1.2 Create FLUXPipeline class for img2img
+- [x] 1.3 Implement model loading with variant selection (schnell/dev)
+- [x] 1.4 Add VRAM optimization (offloading, fp16, attention slicing)
+- [x] 1.5 Test basic FLUX img2img upscaling
 
 ## 2. DINO Conditioning Adapter
 - [ ] 2.1 Create DINOConditioningAdapter class

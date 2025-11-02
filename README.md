@@ -44,6 +44,24 @@ python examples/simple_poc.py
 
 **Note:** The POC uses bicubic upscaling. DINO features are extracted but not yet used for conditioning. FLUX diffusion integration is in progress (Phase 2).
 
+### FLUX Diffusion Upscaling
+
+```bash
+# Use FLUX schnell (fast, downloads ~10GB on first run)
+python examples/flux_poc.py image.jpg --flux
+
+# Use FLUX dev (highest quality)
+python examples/flux_poc.py image.jpg --flux --variant dev
+
+# Use local FLUX model (ComfyUI users, offline usage)
+python examples/flux_poc.py image.jpg --flux \
+  --model-path /path/to/flux_schnell.safetensors
+
+# Or point to a model directory
+python examples/flux_poc.py image.jpg --flux \
+  --model-path ~/ComfyUI/models/diffusion/flux-schnell/
+```
+
 ### Example Usage
 
 ```python

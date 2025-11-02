@@ -5,19 +5,23 @@ import torch
 import numpy as np
 from PIL import Image
 import cv2
+from typing import Optional, Union
 
 
 class BasicUpscaler:
-    def __init__(self):
+    def __init__(self, flux_pipeline=None):
         self.scale_factor = 2
+        self.flux_pipeline = flux_pipeline
     
-    def upscale(self, image, dino_features=None):
+    def upscale(self, image, dino_features=None, use_flux=False, **flux_kwargs):
         """
         Upscale an image by 2x with optional DINO guidance
         
         Args:
             image: PIL Image or numpy array
             dino_features: Optional DINO features for semantic guidance
+            use_flux: Use FLUX diffusion instead of bicubic
+            **flux_kwargs: Additional parameters for FLUX (prompt, steps, etc.)
             
         Returns:
             Upscaled PIL Image
@@ -25,22 +29,30 @@ class BasicUpscaler:
         if isinstance(image, Image.Image):
             image = np.array(image)
         
-        # For POC, use simple bicubic interpolation
-        # TODO: Replace with diffusion-based img2img with DINO conditioning
+        if use_flux and self.flux_pipeline is not None:
+            # Use FLUX for upscaling
+            return self._upscale_with_flux(image, dino_features, **flux_kwargs)
+        else:
+            # Fall back to bicubic
+            return self._upscale_bicubic(image)
+    
+    def _upscale_bicubic(self, image):
+        """Simple bicubic upscaling"""
         h, w = image.shape[:2]
         new_size = (w * self.scale_factor, h * self.scale_factor)
-        
         upscaled = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
-        
-        if dino_features is not None:
-            # TODO: Implement proper DINO-guided conditioning
-            # This will require:
-            # 1. ControlNet-style adapter trained on DINO embeddings
-            # 2. Integration with Stable Diffusion img2img pipeline
-            # 3. Proper feature mapping from patches to upscaled tiles
-            pass
-        
         return Image.fromarray(upscaled)
+    
+    def _upscale_with_flux(self, image, dino_features=None, **flux_kwargs):
+        """FLUX-based upscaling with optional DINO conditioning"""
+        # For now, process as single tile
+        # TODO: Implement tiled processing for large images
+        result = self.flux_pipeline.upscale_tile(
+            image,
+            dino_features=dino_features,
+            **flux_kwargs
+        )
+        return result
     
     def generate_tiles(self, image, tile_size=512, overlap=64):
         """
