@@ -87,7 +87,7 @@ def test_stitch_tiles(upscaler):
 
 def test_blend_mask_creation(upscaler):
     """Test blend mask for smooth transitions"""
-    mask = upscaler._create_blend_mask(tile_size=128, overlap=32)
+    mask = upscaler._create_blend_mask(height=128, width=128, overlap=32)
     
     assert mask.shape == (128, 128)
     assert mask.min() >= 0

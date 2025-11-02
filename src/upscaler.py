@@ -7,11 +7,17 @@ from PIL import Image
 import cv2
 from typing import Optional, Union
 
+try:
+    from .dino_extractor import DINOFeatureExtractor
+except ImportError:
+    from dino_extractor import DINOFeatureExtractor
+
 
 class BasicUpscaler:
-    def __init__(self, flux_pipeline=None, scale_factor=2.0):
+    def __init__(self, flux_pipeline=None, scale_factor=2.0, dino_extractor=None):
         self.scale_factor = scale_factor
         self.flux_pipeline = flux_pipeline
+        self.dino_extractor = dino_extractor
     
     def upscale(self, image, dino_features=None, use_flux=False, **flux_kwargs):
         """
@@ -39,7 +45,7 @@ class BasicUpscaler:
     def _upscale_bicubic(self, image):
         """Simple bicubic upscaling"""
         h, w = image.shape[:2]
-        new_size = (w * self.scale_factor, h * self.scale_factor)
+        new_size = (int(w * self.scale_factor), int(h * self.scale_factor))
         upscaled = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(upscaled)
     
@@ -49,9 +55,14 @@ class BasicUpscaler:
         
         # If image is small enough, process directly
         if h <= 512 and w <= 512:
+            # Extract DINO features if not provided
+            if dino_features is None and self.dino_extractor is not None:
+                dino_features = self.dino_extractor.extract_features(image)
+            
             result = self.flux_pipeline.upscale_tile(
                 image,
                 dino_features=dino_features,
+                scale_factor=self.scale_factor,
                 **flux_kwargs
             )
             return result
@@ -76,10 +87,15 @@ class BasicUpscaler:
         for i, (tile, x, y) in enumerate(tiles):
             print(f"  Processing tile {i+1}/{len(tiles)}...")
             
-            # Upscale this tile with FLUX
+            # Extract DINO features for this tile
+            tile_dino_features = None
+            if self.dino_extractor is not None:
+                tile_dino_features = self.dino_extractor.extract_features(tile)
+            
+            # Upscale this tile with FLUX and DINO guidance
             upscaled_tile = self.flux_pipeline.upscale_tile(
                 tile,
-                dino_features=None,  # TODO: Extract DINO features for this tile region
+                dino_features=tile_dino_features,
                 scale_factor=self.scale_factor,
                 **flux_kwargs
             )
