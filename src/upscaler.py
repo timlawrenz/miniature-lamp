@@ -49,7 +49,7 @@ class BasicUpscaler:
         upscaled = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(upscaled)
     
-    def _upscale_with_flux(self, image, dino_features=None, progress_callback=None, **flux_kwargs):
+    def _upscale_with_flux(self, image, dino_features=None, progress_callback=None, tile_size=1024, **flux_kwargs):
         """FLUX-based upscaling with optional DINO conditioning"""
         h, w = image.shape[:2]
         
@@ -83,10 +83,8 @@ class BasicUpscaler:
         target_h = int(h * self.scale_factor)
         target_w = int(w * self.scale_factor)
         
-        # Calculate input tile size based on scale factor
-        # Goal: output tiles should be ~512x512 for FLUX processing
-        # So input_tile_size = output_tile_size / scale_factor
-        output_tile_size = 512
+        # Calculate input tile size based on output tile size and scale factor
+        output_tile_size = tile_size
         input_tile_size = int(output_tile_size / self.scale_factor)
         
         # Ensure minimum tile size (don't go below 256 for quality)

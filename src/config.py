@@ -17,7 +17,7 @@ class FLUXConfig:
     # Generation parameters
     num_steps: Optional[int] = None  # Uses default per variant if None
     guidance_scale: float = 3.5
-    strength: float = 0.3  # Denoising strength (0.0-1.0)
+    strength: float = 0.3  # Denoising strength (0.0-1.0) - kept for backward compatibility
     prompt: str = "high quality, detailed, sharp, 8k"
     
     # DINO conditioning
@@ -25,7 +25,7 @@ class FLUXConfig:
     use_dino_guidance: bool = True
     
     # Tiling parameters
-    tile_size: int = 512
+    tile_size: int = 1024  # Default for FLUX (512 for SD models)
     tile_overlap: int = 64
     
     # Reproducibility

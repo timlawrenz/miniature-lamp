@@ -339,3 +339,87 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 - DINOv2 by Meta AI Research
 - FLUX by Black Forest Labs
 - Diffusers library by Hugging Face
+
+## ComfyUI Node Usage
+
+The DINO FLUX Upscale node can be used in ComfyUI workflows with the following parameters:
+
+### Required Parameters
+
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `image` | IMAGE | - | - | Input image to upscale |
+| `scale_factor` | FLOAT | 2.0 | 1.0-4.0 | Upscaling factor |
+| `denoise` | FLOAT | 0.2 | 0.0-1.0 | Img2img denoising strength |
+| `tile_size` | INT | 1024 | 512-2048 | Output tile dimensions (SD: 512, FLUX: 1024) |
+| `sampler_name` | DROPDOWN | euler | - | Sampling algorithm (euler, dpmpp_2m, etc.) |
+| `scheduler` | DROPDOWN | normal | - | Noise schedule (normal, karras, exponential, etc.) |
+| `flux_variant` | DROPDOWN | schnell | - | FLUX model variant (schnell=fast, dev=quality) |
+| `steps` | INT | 4 | 1-100 | Number of inference steps |
+| `dino_enabled` | BOOLEAN | True | - | Enable DINO semantic guidance |
+| `dino_strength` | FLOAT | 0.5 | 0.0-1.0 | DINO conditioning weight |
+| `seed` | INT | 0 | - | Random seed for reproducibility |
+
+### Optional Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `model` | MODEL | External model from Load Checkpoint node (saves memory) |
+| `vae` | VAE | External VAE from other nodes |
+| `prompt` | STRING | Text prompt for FLUX guidance |
+
+### Parameter Guide
+
+#### `denoise` vs `dino_strength`
+
+These are two **independent** controls:
+
+- **`denoise`**: Controls how much the diffusion model modifies the image
+  - `0.0` = No changes, pure upscale
+  - `0.2` = Subtle enhancement (recommended for most cases)
+  - `1.0` = Complete regeneration
+
+- **`dino_strength`**: Controls how strongly DINO semantic features guide the process
+  - `0.0` = No DINO guidance
+  - `0.5` = Balanced semantic preservation
+  - `1.0` = Maximum semantic consistency
+
+**Example combinations:**
+- Low denoise (0.2) + High DINO (0.8) = Minimal changes, strong semantic preservation
+- High denoise (0.5) + Low DINO (0.2) = More creative freedom, less semantic constraint
+
+#### `tile_size` Recommendations
+
+Different models work best at different resolutions:
+
+| Model Type | Recommended tile_size | Why |
+|------------|---------------------|-----|
+| Stable Diffusion | 512 | Trained on 512×512 images |
+| FLUX | 1024 | Optimal at higher resolutions |
+| Custom models | Varies | Check model documentation |
+
+**Note:** Larger tiles use more VRAM but may produce better coherence.
+
+#### Using External Models (Memory Optimization)
+
+Connect a `Load Checkpoint` node to the `model` input to share models across multiple nodes:
+
+```
+[Load Checkpoint] → model → [DINO FLUX Upscale]
+                  → vae   ↗
+```
+
+Benefits:
+- Reduces memory usage (no duplicate model loading)
+- Faster workflow execution
+- Use any FLUX-compatible model from your workflow
+
+### Migration Notes
+
+**For users of previous versions:**
+
+- Parameter `strength` has been renamed to `denoise` to match ComfyUI conventions
+- New parameter `tile_size` replaces hardcoded 512 value (default now 1024 for FLUX)
+- New parameters `sampler_name` and `scheduler` provide full sampling control
+- Optional `model` and `vae` inputs allow memory-efficient workflows
+

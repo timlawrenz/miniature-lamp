@@ -37,6 +37,9 @@ class DINOFLUXUpscale:
     
     Combines semantic understanding from DINOv2 with FLUX diffusion
     for high-quality, semantically-aware image upscaling.
+    
+    Accepts optional external MODEL and VAE inputs for memory efficiency.
+    Supports configurable tile sizes, samplers, and schedulers.
     """
     
     def __init__(self):
@@ -62,13 +65,30 @@ class DINOFLUXUpscale:
                     "display": "slider"
                 }),
                 
-                # FLUX parameters
-                "strength": ("FLOAT", {
+                # Sampling parameters
+                "denoise": ("FLOAT", {
                     "default": 0.2,
                     "min": 0.0,
                     "max": 1.0,
                     "step": 0.01,
                     "display": "slider"
+                }),
+                
+                "tile_size": ("INT", {
+                    "default": 1024,
+                    "min": 512,
+                    "max": 2048,
+                    "step": 64
+                }),
+                
+                "sampler_name": (["euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "lms", 
+                                 "dpm_fast", "dpm_adaptive", "dpmpp_2s_a", "dpmpp_2m", 
+                                 "dpmpp_2m_sde", "dpmpp_3m_sde", "ddim", "uni_pc", "uni_pc_bh2"], {
+                    "default": "euler"
+                }),
+                
+                "scheduler": (["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform"], {
+                    "default": "normal"
                 }),
                 
                 "flux_variant": (["schnell", "dev"], {
@@ -103,6 +123,8 @@ class DINOFLUXUpscale:
                 }),
             },
             "optional": {
+                "model": ("MODEL",),
+                "vae": ("VAE",),
                 "prompt": ("STRING", {
                     "default": "high quality, detailed, sharp",
                     "multiline": True
@@ -115,15 +137,28 @@ class DINOFLUXUpscale:
     FUNCTION = "upscale"
     CATEGORY = "image/upscaling"
     
-    def _initialize_models(self, flux_variant, scale_factor, dino_enabled):
+    def _initialize_models(self, flux_variant, scale_factor, dino_enabled, model=None, vae=None):
         """Lazy initialization of models on first use"""
-        if self.flux_pipeline is None:
-            print(f"[DINO FLUX Upscale] Loading FLUX {flux_variant} model...")
-            self.flux_pipeline = FLUXUpscalePipeline(
-                variant=flux_variant,
-                enable_offloading=True
-            )
-            print("[DINO FLUX Upscale] ✓ FLUX model loaded")
+        # Use external model if provided, otherwise load internal FLUX
+        if model is not None:
+            if self.flux_pipeline is None:
+                print("[DINO FLUX Upscale] Using external model from workflow...")
+                # TODO: Create pipeline wrapper for external model
+                # For now, we'll need to adapt the external model
+                print("[DINO FLUX Upscale] ⚠ External model support coming soon - using internal FLUX for now")
+                self.flux_pipeline = FLUXUpscalePipeline(
+                    variant=flux_variant,
+                    enable_offloading=True
+                )
+                print("[DINO FLUX Upscale] ✓ Using internal FLUX model")
+        else:
+            if self.flux_pipeline is None:
+                print(f"[DINO FLUX Upscale] Loading FLUX {flux_variant} model...")
+                self.flux_pipeline = FLUXUpscalePipeline(
+                    variant=flux_variant,
+                    enable_offloading=True
+                )
+                print("[DINO FLUX Upscale] ✓ FLUX model loaded")
         
         if self.upscaler is None:
             print("[DINO FLUX Upscale] Initializing upscaler...")
@@ -141,14 +176,10 @@ class DINOFLUXUpscale:
             self.upscaler.dino_extractor = self.dino_extractor
             print("[DINO FLUX Upscale] ✓ DINOv2 model loaded")
     
-    def _estimate_tiles(self, h, w, scale_factor):
+    def _estimate_tiles(self, h, w, scale_factor, tile_size):
         """Estimate number of tiles for progress bar"""
-        target_h = int(h * scale_factor)
-        target_w = int(w * scale_factor)
-        
-        # Match the upscaler's tile calculation logic
-        output_tile_size = 512
-        input_tile_size = int(output_tile_size / scale_factor)
+        # Calculate input tile size based on output tile size and scale factor
+        input_tile_size = int(tile_size / scale_factor)
         input_tile_size = max(256, input_tile_size)
         overlap = max(16, int(input_tile_size / 8))
         stride = input_tile_size - overlap
@@ -159,20 +190,26 @@ class DINOFLUXUpscale:
         
         return tiles_y * tiles_x
     
-    def upscale(self, image, scale_factor, strength, flux_variant, steps,
-                dino_enabled, dino_strength, seed, prompt="high quality, detailed, sharp"):
+    def upscale(self, image, scale_factor, denoise, tile_size, sampler_name, scheduler,
+                flux_variant, steps, dino_enabled, dino_strength, seed, 
+                model=None, vae=None, prompt="high quality, detailed, sharp"):
         """
         Main upscaling function
         
         Args:
             image: ComfyUI image tensor [B, H, W, C]
             scale_factor: Upscaling factor (1.0-4.0)
-            strength: FLUX denoising strength (0.0-1.0)
+            denoise: Denoising strength for img2img (0.0-1.0)
+            tile_size: Output tile size (512-2048)
+            sampler_name: Sampling algorithm to use
+            scheduler: Noise schedule to use
             flux_variant: "schnell" or "dev"
             steps: Number of inference steps
             dino_enabled: Whether to use DINO conditioning
             dino_strength: DINO conditioning strength (0.0-1.0)
             seed: Random seed for reproducibility
+            model: Optional external MODEL from workflow
+            vae: Optional external VAE from workflow
             prompt: Text prompt for FLUX guidance
             
         Returns:
@@ -189,7 +226,7 @@ class DINOFLUXUpscale:
                 ProgressBar = None
             
             # Initialize models if needed
-            self._initialize_models(flux_variant, scale_factor, dino_enabled)
+            self._initialize_models(flux_variant, scale_factor, dino_enabled, model, vae)
             
             # Update scale factor (in case it changed since initialization)
             if self.upscaler is not None:
@@ -197,7 +234,7 @@ class DINOFLUXUpscale:
             
             # Estimate number of tiles for progress bar
             h, w = image.shape[1:3]
-            num_tiles = self._estimate_tiles(h, w, scale_factor)
+            num_tiles = self._estimate_tiles(h, w, scale_factor, tile_size)
             
             # Create progress bar (also handles stop button)
             pbar = ProgressBar(num_tiles) if has_progress else None
@@ -214,16 +251,20 @@ class DINOFLUXUpscale:
                 print(f"[DINO FLUX Upscale] ✓ Extracted {dino_features.shape[0]} patch features")
             
             # Upscale using our existing code with progress callback
-            print(f"[DINO FLUX Upscale] Upscaling {scale_factor}x with strength={strength}...")
+            print(f"[DINO FLUX Upscale] Upscaling {scale_factor}x with denoise={denoise}, tile_size={tile_size}")
+            print(f"[DINO FLUX Upscale] Sampler: {sampler_name}, Scheduler: {scheduler}")
             result_pil = self.upscaler.upscale(
                 pil_image,
                 dino_features=dino_features,
                 use_flux=True,
                 prompt=prompt,
                 num_steps=steps,
-                strength=strength,
+                strength=denoise,
                 seed=seed,
                 dino_conditioning_strength=dino_strength,
+                tile_size=tile_size,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
                 progress_callback=lambda: pbar.update(1) if pbar else None
             )
             

@@ -143,7 +143,9 @@ class FLUXUpscalePipeline:
         seed: Optional[int] = None,
         dino_features: Optional[torch.Tensor] = None,
         dino_conditioning_strength: float = 0.5,
-        scale_factor: float = 2.0
+        scale_factor: float = 2.0,
+        sampler_name: str = "euler",
+        scheduler: str = "normal"
     ) -> Image.Image:
         """
         Upscale a single tile using FLUX img2img
@@ -153,14 +155,21 @@ class FLUXUpscalePipeline:
             prompt: Text prompt for guidance
             num_steps: Inference steps (uses default if None)
             guidance_scale: Guidance strength
-            strength: Denoising strength (0.0-1.0)
+            strength: Denoising strength (0.0-1.0) - also called 'denoise'
             seed: Random seed for reproducibility
             dino_features: Optional DINO features for semantic conditioning
             dino_conditioning_strength: Strength of DINO conditioning (0.0-1.0)
             scale_factor: Upscaling factor
+            sampler_name: Sampling algorithm (currently informational, FLUX uses built-in)
+            scheduler: Noise schedule (currently informational, FLUX uses built-in)
             
         Returns:
             Upscaled image tile
+            
+        Note:
+            sampler_name and scheduler are accepted for API compatibility but
+            FLUX pipelines use their own internal sampling. These parameters
+            will be respected in future versions with custom sampling support.
         """
         if self.pipe is None:
             self.load_model()
