@@ -67,7 +67,7 @@ class DINOUpscale:
                 
                 # Sampling parameters
                 "denoise": ("FLOAT", {
-                    "default": 0.2,
+                    "default": 0.4,
                     "min": 0.0,
                     "max": 1.0,
                     "step": 0.01,
