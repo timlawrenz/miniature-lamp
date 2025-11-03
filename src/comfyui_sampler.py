@@ -49,14 +49,16 @@ class ComfyUISamplerWrapper:
         if image_tensor.shape[-1] != 3:
             raise ValueError(f"Expected last dimension to be 3 (RGB channels), got shape {image_tensor.shape}")
         
-        # Convert from ComfyUI format [B, H, W, C] to VAE format [B, C, H, W]
-        # Using permute which is more explicit and reliable than movedim
-        # permute(0, 3, 1, 2) means: keep batch (0), move channels (3) to position 1,
-        # keep height (1) at position 2, keep width (2) at position 3
-        pixels = image_tensor.permute(0, 3, 1, 2).contiguous()
+        # ComfyUI VAE.encode() expects pixels in format [B, H, W, C]
+        # It internally converts to [B, C, H, W] using movedim(-1, 1)
+        # So we should NOT permute here - just pass the tensor as-is
+        pixels = image_tensor
         
-        # ComfyUI VAE expects samples to be in a specific range and format
-        # The encode method expects pixels in range [0, 1] in format [B, C, H, W]
+        # Ensure proper memory layout
+        if not pixels.is_contiguous():
+            pixels = pixels.contiguous()
+        
+        # ComfyUI VAE expects samples in range [0, 1]
         # ComfyUI's VAE.encode() handles device transfer internally
         t = self.vae.encode(pixels)
         
@@ -74,13 +76,15 @@ class ComfyUISamplerWrapper:
             Image tensor in ComfyUI format [B, H, W, C]
         """
         # Decode from latent
+        # ComfyUI VAE.decode() returns pixels in format [B, H, W, C]
+        # (it internally does movedim(1, -1) to convert from [B, C, H, W] to [B, H, W, C])
         pixels = self.vae.decode(latent)
         
-        # Convert back to ComfyUI format [B, C, H, W] -> [B, H, W, C]
-        # Using permute for reliability: (0, 2, 3, 1) moves channels to last position
-        image = pixels.permute(0, 2, 3, 1).contiguous()
+        # Ensure proper memory layout
+        if not pixels.is_contiguous():
+            pixels = pixels.contiguous()
         
-        return image
+        return pixels
     
     def upscale(
         self,
