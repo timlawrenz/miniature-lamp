@@ -1,7 +1,7 @@
 """
-ComfyUI DINO FLUX Upscale Custom Node
+ComfyUI DINO Upscale Custom Node
 
-Semantic-aware image upscaling using DINOv2 and FLUX diffusion models.
+Semantic-aware image upscaling using DINOv2 and diffusion models.
 """
 from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 

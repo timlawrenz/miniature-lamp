@@ -381,7 +381,7 @@ Different models work best at different resolutions:
 Connect a `Load Checkpoint` node to the `model` input to share models across multiple nodes:
 
 ```
-[Load Checkpoint] → model → [DINO FLUX Upscale]
+[Load Checkpoint] → model → [DINO Upscale]
                   → vae   ↗
 ```
 

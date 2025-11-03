@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.2] - 2024-11-03
+
+### Changed
+- Renamed project from "DINO FLUX Upscale" to "DINO Upscale" for broader compatibility
+- Updated node class name from `DINOFLUXUpscale` to `DINOUpscale`
+- Generalized messaging to support any diffusion model backend
+
+### Fixed
+- Module import issues in ComfyUI installations
+
+## [1.0.1] - 2024-11-02
+
+### Added
+- ComfyUI Registry publishing support
+- External model/VAE support for memory efficiency
+- Configurable tile sizes, samplers, and schedulers
+
 ## [Unreleased] - 2024-11-02
 
 ### Added
