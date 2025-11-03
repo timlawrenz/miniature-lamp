@@ -24,11 +24,13 @@ try:
     from .src.dino_extractor import DINOFeatureExtractor
     from .src.flux_pipeline import FLUXUpscalePipeline
     from .src.upscaler import BasicUpscaler
+    from .src.comfyui_sampler import ComfyUISamplerWrapper
 except ImportError:
     # Fall back to absolute import (when loaded by ComfyUI)
     from src.dino_extractor import DINOFeatureExtractor
     from src.flux_pipeline import FLUXUpscalePipeline
     from src.upscaler import BasicUpscaler
+    from src.comfyui_sampler import ComfyUISamplerWrapper
 
 
 class DINOUpscale:
@@ -46,6 +48,7 @@ class DINOUpscale:
         """Initialize node (models loaded lazily on first use)"""
         self.dino_extractor = None
         self.flux_pipeline = None
+        self.comfyui_sampler = None
         self.upscaler = None
     
     @classmethod
@@ -139,35 +142,43 @@ class DINOUpscale:
     
     def _initialize_models(self, flux_variant, scale_factor, dino_enabled, model=None, vae=None):
         """Lazy initialization of models on first use"""
-        # Use external model if provided, otherwise load internal FLUX
-        if model is not None:
-            if self.flux_pipeline is None:
+        # Use external model if provided (ComfyUI native)
+        if model is not None and vae is not None:
+            if self.comfyui_sampler is None:
                 print("[DINO Upscale] Using external model from workflow...")
-                # TODO: Create pipeline wrapper for external model
-                # For now, we'll need to adapt the external model
-                print("[DINO Upscale] ⚠ External model support coming soon - using internal FLUX for now")
-                self.flux_pipeline = FLUXUpscalePipeline(
-                    variant=flux_variant,
-                    enable_offloading=True
+                self.comfyui_sampler = ComfyUISamplerWrapper(
+                    model=model,
+                    vae=vae,
+                    clip=None  # Will be added if needed
                 )
-                print("[DINO Upscale] ✓ Using internal FLUX model")
+                print("[DINO Upscale] ✓ ComfyUI native sampler initialized")
+                
+            if self.upscaler is None:
+                print("[DINO Upscale] Initializing upscaler with ComfyUI sampler...")
+                self.upscaler = BasicUpscaler(
+                    comfyui_sampler=self.comfyui_sampler,
+                    scale_factor=scale_factor,
+                    dino_extractor=None  # Will add if enabled
+                )
+                print("[DINO Upscale] ✓ Upscaler initialized (model-agnostic mode)")
         else:
+            # Fall back to FLUX pipeline if no external model
             if self.flux_pipeline is None:
-                print(f"[DINO Upscale] Loading FLUX {flux_variant} model...")
+                print(f"[DINO Upscale] No external model provided, loading FLUX {flux_variant}...")
                 self.flux_pipeline = FLUXUpscalePipeline(
                     variant=flux_variant,
                     enable_offloading=True
                 )
                 print("[DINO Upscale] ✓ FLUX model loaded")
-        
-        if self.upscaler is None:
-            print("[DINO Upscale] Initializing upscaler...")
-            self.upscaler = BasicUpscaler(
-                flux_pipeline=self.flux_pipeline,
-                scale_factor=scale_factor,
-                dino_extractor=None  # Will add if enabled
-            )
-            print("[DINO Upscale] ✓ Upscaler initialized")
+            
+            if self.upscaler is None:
+                print("[DINO Upscale] Initializing upscaler with FLUX...")
+                self.upscaler = BasicUpscaler(
+                    flux_pipeline=self.flux_pipeline,
+                    scale_factor=scale_factor,
+                    dino_extractor=None  # Will add if enabled
+                )
+                print("[DINO Upscale] ✓ Upscaler initialized (FLUX mode)")
         
         if dino_enabled and self.dino_extractor is None:
             print("[DINO Upscale] Loading DINOv2 model...")
@@ -256,7 +267,7 @@ class DINOUpscale:
             result_pil = self.upscaler.upscale(
                 pil_image,
                 dino_features=dino_features,
-                use_flux=True,
+                use_diffusion=True,
                 prompt=prompt,
                 num_steps=steps,
                 strength=denoise,

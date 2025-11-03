@@ -2,18 +2,26 @@
 
 ## [1.1.0] - 2024-11-03
 
+### Added
+- **ComfyUI Native Sampler Support** - Now works with any diffusion model via ComfyUI's sampling system
+- `comfyui_sampler.py` - Model-agnostic upscaling using ComfyUI's native samplers
+- FLUX_DEPENDENCIES.md documenting architecture
+
 ### Changed
-- Clarified that current implementation uses FLUX.1 as the diffusion backend
-- External model support is marked as TODO/coming soon
+- **FLUX is now optional** - When external MODEL/VAE are provided, uses ComfyUI's sampler
+- Falls back to FLUX.1 only when no external model is provided
+- Upscaler now supports both FLUX and ComfyUI backends
+- Renamed `use_flux` parameter to `use_diffusion` for clarity
 - Add .env to .gitignore for security
 
-### Added
-- FLUX_DEPENDENCIES.md documenting current architecture and dependencies
+### Fixed
+- External model/VAE inputs are now properly utilized
+- Module import issues in ComfyUI installations
 
 ### Notes
-- The node currently uses FLUX.1-schnell or FLUX.1-dev for diffusion
-- External MODEL/VAE inputs are accepted but not yet fully integrated
-- Future versions will support ComfyUI's native sampler system
+- With external MODEL/VAE: Uses any ComfyUI-compatible diffusion model
+- Without external model: Falls back to FLUX.1-schnell or FLUX.1-dev
+- DINO conditioning integration with ComfyUI sampler is TODO
 
 ## [1.0.2] - 2024-11-03
 

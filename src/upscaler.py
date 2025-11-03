@@ -14,20 +14,21 @@ except ImportError:
 
 
 class BasicUpscaler:
-    def __init__(self, flux_pipeline=None, scale_factor=2.0, dino_extractor=None):
+    def __init__(self, flux_pipeline=None, comfyui_sampler=None, scale_factor=2.0, dino_extractor=None):
         self.scale_factor = scale_factor
         self.flux_pipeline = flux_pipeline
+        self.comfyui_sampler = comfyui_sampler
         self.dino_extractor = dino_extractor
     
-    def upscale(self, image, dino_features=None, use_flux=False, **flux_kwargs):
+    def upscale(self, image, dino_features=None, use_diffusion=False, **kwargs):
         """
-        Upscale an image by 2x with optional DINO guidance
+        Upscale an image with optional DINO guidance
         
         Args:
             image: PIL Image or numpy array
             dino_features: Optional DINO features for semantic guidance
-            use_flux: Use FLUX diffusion instead of bicubic
-            **flux_kwargs: Additional parameters for FLUX (prompt, steps, etc.)
+            use_diffusion: Use diffusion model instead of bicubic
+            **kwargs: Additional parameters (prompt, steps, sampler_name, etc.)
             
         Returns:
             Upscaled PIL Image
@@ -35,9 +36,15 @@ class BasicUpscaler:
         if isinstance(image, Image.Image):
             image = np.array(image)
         
-        if use_flux and self.flux_pipeline is not None:
-            # Use FLUX for upscaling
-            return self._upscale_with_flux(image, dino_features, **flux_kwargs)
+        if use_diffusion:
+            # Use ComfyUI sampler if available, otherwise FLUX
+            if self.comfyui_sampler is not None:
+                return self._upscale_with_comfyui(image, dino_features, **kwargs)
+            elif self.flux_pipeline is not None:
+                return self._upscale_with_flux(image, dino_features, **kwargs)
+            else:
+                print("[Upscaler] Warning: No diffusion backend available, falling back to bicubic")
+                return self._upscale_bicubic(image)
         else:
             # Fall back to bicubic
             return self._upscale_bicubic(image)
@@ -48,6 +55,34 @@ class BasicUpscaler:
         new_size = (int(w * self.scale_factor), int(h * self.scale_factor))
         upscaled = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(upscaled)
+    
+    def _upscale_with_comfyui(self, image, dino_features=None, progress_callback=None, 
+                              sampler_name="euler", scheduler="normal", steps=20, 
+                              denoise=0.4, cfg=7.0, seed=0, **kwargs):
+        """ComfyUI native upscaling with model-agnostic sampling"""
+        # TODO: Integrate DINO features into conditioning
+        # For now, just use the sampler without DINO
+        result = self.comfyui_sampler.upscale(
+            image,
+            scale_factor=self.scale_factor,
+            denoise=denoise,
+            steps=steps,
+            cfg=cfg,
+            sampler_name=sampler_name,
+            scheduler=scheduler,
+            seed=seed,
+            dino_features=dino_features
+        )
+        
+        # Update progress
+        if progress_callback:
+            try:
+                progress_callback()
+            except Exception:
+                # Stop signal received
+                raise
+        
+        return result
     
     def _upscale_with_flux(self, image, dino_features=None, progress_callback=None, tile_size=1024, **flux_kwargs):
         """FLUX-based upscaling with optional DINO conditioning"""
