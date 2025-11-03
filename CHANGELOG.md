@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0] - 2024-11-03
+
+### Changed
+- Clarified that current implementation uses FLUX.1 as the diffusion backend
+- External model support is marked as TODO/coming soon
+- Add .env to .gitignore for security
+
+### Added
+- FLUX_DEPENDENCIES.md documenting current architecture and dependencies
+
+### Notes
+- The node currently uses FLUX.1-schnell or FLUX.1-dev for diffusion
+- External MODEL/VAE inputs are accepted but not yet fully integrated
+- Future versions will support ComfyUI's native sampler system
+
 ## [1.0.2] - 2024-11-03
 
 ### Changed

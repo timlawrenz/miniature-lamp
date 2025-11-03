@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-dino-upscale"
 description = "DINO-guided upscaler for ComfyUI with semantic-aware image enhancement"
-version = "1.0.2"
+version = "1.1.0"
 license = {file = "LICENSE.txt"} 
 classifiers = [
     "Operating System :: OS Independent",

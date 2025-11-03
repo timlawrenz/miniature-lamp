@@ -11,6 +11,10 @@ build/
 dist/
 *.egg-info/
 
+# Environment variables
+.env
+.env.local
+
 # Models and weights
 *.pth
 *.ckpt
