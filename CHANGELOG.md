@@ -3,10 +3,54 @@
 ## [2.0.1] - 2024-11-03
 
 ### Fixed
-- **Critical**: Fixed tensor dimension error in ComfyUI sampler that caused "expected 3 channels, but got 870 channels" error
-  - Replaced unreliable `movedim()` with explicit `permute()` in `encode_image()` and `decode_latent()`
-  - Prevents invalid tensor shapes with 0 dimensions
-  - More reliable across different PyTorch versions
+- **Critical**: Fixed double tensor permutation bug causing "expected 3 channels, but got 870 channels" error
+  - ComfyUI VAE internally converts tensor format with `movedim(-1, 1)`
+  - Removed manual permutation in `encode_image()` and `decode_latent()`
+  - Now correctly passes tensors in ComfyUI format `[B, H, W, C]`
+  
+- **Critical**: Added CLIP support for FLUX models to provide required `pooled_output`
+  - FLUX models require `pooled_output` in conditioning dictionary
+  - Added optional CLIP input to node
+  - Properly encode prompts using CLIP when available
+  - Fixes `KeyError: 'pooled_output'` with FLUX models
+
+- **Major**: Implemented proper tiled diffusion upscaling
+  - Previous version processed entire image as one tile regardless of `tile_size` parameter
+  - Now correctly splits large images into overlapping tiles
+  - Each tile processed through diffusion independently
+  - Gradient blending prevents visible seams
+  - Example: 1728×2304 output with tile_size=1024 now processes 6 tiles (3×2 grid) instead of 1
+
+### Changed
+- **Improved**: Default denoise value adjusted from 0.2 to 0.25
+  - Previous default looked too similar to bicubic upscale
+  - New default provides better balance between preservation and enhancement
+  - 0.25 = 75% preserved + 25% diffusion enhancement
+
+- **Improved**: Tile estimation now calculates based on output dimensions
+  - Progress bar now shows accurate tile count
+  - Better memory usage prediction
+
+### Added
+- Comprehensive documentation for all fixes in `/docs`:
+  - `FIX_DOUBLE_PERMUTATION.md` - Tensor format bug details
+  - `FIX_CLIP_POOLED_OUTPUT.md` - CLIP requirement explanation
+  - `INVESTIGATION_BICUBIC_QUALITY.md` - Denoise parameter analysis
+  - `FIX_TILED_UPSCALING.md` - Tiled upscaling implementation
+  - `SESSION_SUMMARY.md` - Complete overview of all changes
+
+### Technical Details
+- Fixed parameter name mismatches (`strength` → `denoise`, `num_steps` → `steps`)
+- Upscaling workflow now: Lanczos upscale → tile → encode → diffusion → decode → stitch
+- Per-tile seeding (seed + tile_index) prevents repetitive patterns
+- Fixed tile calculation: uses output dimensions, not input dimensions
+
+### Benefits
+- ✅ Works with FLUX, SDXL, and SD 1.5 models
+- ✅ Properly tiles large images for memory efficiency
+- ✅ Visible diffusion enhancement (not just bicubic)
+- ✅ Accurate progress tracking
+- ✅ Clear console logging per tile
 
 ## [2.0.0] - 2024-11-03
 
