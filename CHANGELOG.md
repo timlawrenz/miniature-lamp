@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1] - 2024-11-03
+
+### Fixed
+- **Critical**: Fixed tensor dimension error in ComfyUI sampler that caused "expected 3 channels, but got 870 channels" error
+  - Replaced unreliable `movedim()` with explicit `permute()` in `encode_image()` and `decode_latent()`
+  - Prevents invalid tensor shapes with 0 dimensions
+  - More reliable across different PyTorch versions
+
 ## [2.0.0] - 2024-11-03
 
 ### 🚨 BREAKING CHANGES
