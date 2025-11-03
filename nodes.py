@@ -175,15 +175,21 @@ class DINOUpscale:
     
     def _estimate_tiles(self, h, w, scale_factor, tile_size):
         """Estimate number of tiles for progress bar"""
-        # Calculate input tile size based on output tile size and scale factor
-        input_tile_size = int(tile_size / scale_factor)
-        input_tile_size = max(256, input_tile_size)
-        overlap = max(16, int(input_tile_size / 8))
-        stride = input_tile_size - overlap
+        # Calculate output dimensions
+        target_h = int(h * scale_factor)
+        target_w = int(w * scale_factor)
         
-        # Calculate grid dimensions on INPUT image
-        tiles_y = (h + stride - 1) // stride
-        tiles_x = (w + stride - 1) // stride
+        # If image fits in one tile, return 1
+        if target_h <= tile_size and target_w <= tile_size:
+            return 1
+        
+        # Calculate overlap and stride for tile generation
+        overlap = 64
+        stride = tile_size - overlap
+        
+        # Calculate grid dimensions on OUTPUT image
+        tiles_y = (target_h + stride - 1) // stride
+        tiles_x = (target_w + stride - 1) // stride
         
         return tiles_y * tiles_x
     
@@ -254,8 +260,8 @@ class DINOUpscale:
                 dino_features=dino_features,
                 use_diffusion=True,
                 prompt=prompt,
-                num_steps=steps,
-                strength=denoise,
+                steps=steps,
+                denoise=denoise,
                 seed=seed,
                 dino_conditioning_strength=dino_strength,
                 tile_size=tile_size,

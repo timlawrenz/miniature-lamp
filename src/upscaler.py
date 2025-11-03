@@ -55,33 +55,91 @@ class BasicUpscaler:
     
     def _upscale_with_comfyui(self, image, dino_features=None, progress_callback=None, 
                               sampler_name="euler", scheduler="normal", steps=20, 
-                              denoise=0.4, cfg=7.0, seed=0, prompt=None, **kwargs):
-        """ComfyUI native upscaling with model-agnostic sampling"""
-        # TODO: Integrate DINO features into conditioning
-        # For now, just use the sampler without DINO
-        result = self.comfyui_sampler.upscale(
-            image,
-            scale_factor=self.scale_factor,
-            denoise=denoise,
-            steps=steps,
-            cfg=cfg,
-            sampler_name=sampler_name,
-            scheduler=scheduler,
-            seed=seed,
-            positive_prompt=prompt,
-            negative_prompt="",
-            dino_features=dino_features
-        )
+                              denoise=0.4, cfg=7.0, seed=0, prompt=None, 
+                              tile_size=1024, **kwargs):
+        """ComfyUI native upscaling with tiled processing"""
+        from PIL import Image
+        import cv2
         
-        # Update progress
-        if progress_callback:
-            try:
-                progress_callback()
-            except Exception:
-                # Stop signal received
-                raise
+        # Calculate target size
+        h, w = image.shape[:2] if isinstance(image, np.ndarray) else (image.height, image.width)
+        target_h = int(h * self.scale_factor)
+        target_w = int(w * self.scale_factor)
         
-        return result
+        # First, do a simple upscale to target resolution
+        if isinstance(image, Image.Image):
+            image_np = np.array(image)
+        else:
+            image_np = image
+            
+        # Use lanczos for initial upscale (better than bicubic for photos)
+        upscaled_image = cv2.resize(image_np, (target_w, target_h), interpolation=cv2.INTER_LANCZOS4)
+        
+        # If the upscaled image is smaller than tile_size, process it as one tile
+        if target_h <= tile_size and target_w <= tile_size:
+            print(f"[Upscaler] Image {target_w}x{target_h} fits in one tile (tile_size={tile_size})")
+            result = self.comfyui_sampler.upscale(
+                upscaled_image,
+                scale_factor=1.0,  # Already at target size
+                denoise=denoise,
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                seed=seed,
+                positive_prompt=prompt,
+                negative_prompt="",
+                dino_features=dino_features
+            )
+            if progress_callback:
+                try:
+                    progress_callback()
+                except Exception:
+                    raise
+            return result
+        
+        # Generate tiles with overlap
+        overlap = 64
+        tiles = self.generate_tiles(upscaled_image, tile_size=tile_size, overlap=overlap)
+        print(f"[Upscaler] Processing {len(tiles)} tiles of size {tile_size}x{tile_size}")
+        
+        # Process each tile
+        processed_tiles = []
+        for i, (tile, x, y) in enumerate(tiles):
+            print(f"[Upscaler] Processing tile {i+1}/{len(tiles)} at position ({x}, {y})")
+            
+            # Process tile through diffusion (no upscaling, just refinement)
+            processed_tile_pil = self.comfyui_sampler.upscale(
+                tile,
+                scale_factor=1.0,  # Already at target size, just refine
+                denoise=denoise,
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                seed=seed + i,  # Different seed per tile for variation
+                positive_prompt=prompt,
+                negative_prompt="",
+                dino_features=None  # TODO: Extract DINO features per tile
+            )
+            
+            # Convert back to numpy
+            processed_tile = np.array(processed_tile_pil)
+            processed_tiles.append((processed_tile, x, y))
+            
+            # Update progress
+            if progress_callback:
+                try:
+                    progress_callback()
+                except Exception:
+                    raise
+        
+        # Stitch tiles back together
+        print(f"[Upscaler] Stitching {len(processed_tiles)} tiles")
+        result_pil = self.stitch_tiles(processed_tiles, (target_w, target_h), 
+                                       tile_size=tile_size, overlap=overlap)
+        
+        return result_pil
     
     def generate_tiles(self, image, tile_size=512, overlap=64):
         """
