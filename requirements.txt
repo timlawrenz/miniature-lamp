@@ -7,13 +7,6 @@ pillow>=9.5.0
 # DINO model
 transformers>=4.30.0
 
-# FLUX diffusion model
-diffusers>=0.27.0
-accelerate>=0.27.0
-safetensors>=0.4.0
-sentencepiece>=0.1.99
-protobuf>=3.20.0
-
 # Image processing
 opencv-python>=4.7.0
 

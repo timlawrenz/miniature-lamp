@@ -2,100 +2,90 @@
 
 ## Overview
 
-DINO Upscale is a semantic-aware image upscaler that uses DINOv2 vision features to guide diffusion models. As of v1.1.0, it supports **any diffusion model** via ComfyUI's native sampling system.
+DINO Upscale is a semantic-aware image upscaler that uses DINOv2 vision features to guide diffusion models. As of **v2.0.0**, it is **fully model-agnostic** and works with ANY ComfyUI-compatible diffusion model.
 
-## Architecture (v1.1.0)
+## Architecture (v2.0.0)
 
-### Dual Backend Support
+### Model-Agnostic Design
 
-The node now supports two diffusion backends:
+The node **requires** external MODEL and VAE inputs from ComfyUI workflows. It no longer includes any internal diffusion models.
 
-1. **ComfyUI Native Sampler** (Model-Agnostic) ✨ NEW
-   - Used when external MODEL + VAE are provided
-   - Works with ANY ComfyUI-compatible diffusion model
-   - Uses `comfyui_sampler.py` wrapper
-   - Supports: SD 1.5, SDXL, FLUX, and any future models
-
-2. **FLUX Pipeline** (Legacy Fallback)
-   - Used when NO external model is provided  
-   - Loads FLUX.1-schnell or FLUX.1-dev internally
-   - Uses `flux_pipeline.py` wrapper
-   - Requires ~8-12GB VRAM
+**Key Principle:** Use the models you already have loaded in your workflow - no duplicate loading, maximum flexibility.
 
 ### Component Structure
 
 ```
 nodes.py (ComfyUI Node Interface)
     ├── DINOUpscale class
-    │   ├── Accepts: image, MODEL, VAE, sampler settings
+    │   ├── REQUIRES: MODEL + VAE inputs
     │   └── _initialize_models()
-    │       ├── If MODEL+VAE provided → ComfyUISamplerWrapper
-    │       └── Else → FLUXUpscalePipeline
+    │       └── Creates ComfyUISamplerWrapper
     │
-    ├── upscaler.py (Backend Router)
-    │   ├── upscale() - routes to appropriate backend
-    │   ├── _upscale_with_comfyui() - ComfyUI native
-    │   ├── _upscale_with_flux() - FLUX fallback
+    ├── upscaler.py (Upscaling Logic)
+    │   ├── upscale() - main entry point
+    │   ├── _upscale_with_comfyui() - ComfyUI native sampling
     │   └── _upscale_bicubic() - simple fallback
     │
-    ├── comfyui_sampler.py (NEW) 
+    ├── comfyui_sampler.py
     │   └── ComfyUISamplerWrapper
     │       ├── Uses comfy.sample.sample()
     │       ├── Works with any MODEL/VAE
-    │       └── Model-agnostic
-    │
-    ├── flux_pipeline.py (Legacy)
-    │   └── FLUXUpscalePipeline
-    │       ├── Uses diffusers.FluxImg2ImgPipeline
-    │       └── FLUX-specific
+    │       └── Encodes → Upscales latent → Samples → Decodes
     │
     └── dino_extractor.py
         └── DINOFeatureExtractor (DINOv2)
+            └── Extracts semantic features for guidance
 ```
 
-### Workflow Modes
-
-#### Mode 1: Model-Agnostic (Recommended)
+### Workflow (REQUIRED)
 
 ```
-[Load Checkpoint] → MODEL → [DINO Upscale]
+[Load Checkpoint] → MODEL → [DINO Upscale] → [Preview Image]
                   → VAE   ↗
+[Load Image] ---------------↗
 
 Benefits:
-- ✅ Works with any model (SD, SDXL, FLUX, etc.)
-- ✅ No additional model loading
+- ✅ Works with ANY model (SD 1.5, SDXL, FLUX, custom models)
+- ✅ No duplicate model loading
 - ✅ Memory efficient
 - ✅ Uses ComfyUI's native samplers
-```
-
-#### Mode 2: FLUX Fallback (No External Model)
-
-```
-[Load Image] → [DINO Upscale]
-
-Behavior:
-- Loads FLUX.1 internally
-- ~8-12GB VRAM required
-- Slower initialization
+- ✅ Fast installation (no FLUX dependencies)
 ```
 
 ### Key Features
 
 - **Semantic Guidance**: DINOv2 features preserve object identity
 - **Tiled Processing**: Handles large images via seamless tiling
-- **Flexible Backend**: ComfyUI native or FLUX
+- **Model-Agnostic**: Works with any ComfyUI diffusion model
 - **Configurable**: Scale, denoise, steps, sampler, scheduler
 
 ## Dependencies
 
-### Required (Core)
-- torch
+### Required
+- torch, torchvision
 - transformers (for DINOv2)
 - numpy, PIL, opencv
+- **ComfyUI** (provides MODEL/VAE/samplers)
 
-### Optional (Backends)
-- **diffusers** - Required ONLY if using FLUX fallback (no external model)
-- **ComfyUI** - Always required (provides MODEL/VAE/samplers)
+### NOT Required
+- ❌ diffusers
+- ❌ accelerate  
+- ❌ safetensors (for FLUX)
+- ❌ sentencepiece
+- ❌ protobuf
+
+## Changes from v1.x
+
+### v1.1.0 (Dual Backend)
+- Supported both ComfyUI sampler AND FLUX fallback
+- FLUX loaded if no external model provided
+- Larger package size
+
+### v2.0.0 (Model-Agnostic)
+- **REMOVED** FLUX fallback completely
+- **REQUIRES** external MODEL + VAE
+- Smaller, faster, more flexible
+- Breaking change: Old workflows need MODEL/VAE connections
 
 ## Future Enhancements
 
@@ -103,10 +93,11 @@ Behavior:
 - [ ] ControlNet integration
 - [ ] Attention-based feature injection
 - [ ] Multi-model ensemble
+- [ ] Advanced tiling strategies
 
-## Migration from v1.0.x
+## Migration from v1.x
 
-v1.0.x: Always used FLUX (external models ignored)
-v1.1.0: Uses external models when provided, FLUX only as fallback
+**Old (v1.x):** Could run without external model (used FLUX)
+**New (v2.0):** MUST provide external MODEL + VAE
 
-**No workflow changes needed** - but now MODEL/VAE inputs are actually used!
+Simply add a "Load Checkpoint" node and connect MODEL + VAE!

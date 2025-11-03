@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.0.0] - 2024-11-03
+
+### 🚨 BREAKING CHANGES
+- **FLUX completely removed** - External MODEL and VAE are now REQUIRED
+- Removed `flux_variant` parameter (no longer needed)
+- Removed flux_pipeline.py and config.py
+- Default steps changed from 4 to 20 (more appropriate for general models)
+
+### Removed
+- FLUX.1 internal model loading
+- diffusers, accelerate, safetensors, sentencepiece, protobuf dependencies
+- All FLUX-specific code and parameters
+
+### Benefits
+- ✅ Smaller package size (no FLUX dependencies)
+- ✅ Faster installation
+- ✅ Lower VRAM usage (no internal model loading)
+- ✅ Works with ANY ComfyUI-compatible model
+
+### Migration Guide
+
+**v1.x workflow:**
+```
+[Load Image] → [DINO Upscale]
+```
+
+**v2.0 workflow (REQUIRED):**
+```
+[Load Checkpoint] → MODEL → [DINO Upscale]
+                  → VAE   ↗
+[Load Image] ---------------↗
+```
+
+If you don't connect MODEL + VAE, the node will error with a clear message.
+
 ## [1.1.0] - 2024-11-03
 
 ### Added

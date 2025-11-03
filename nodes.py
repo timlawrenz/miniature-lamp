@@ -22,13 +22,11 @@ except ImportError:
 try:
     # Try relative import first (when installed as package)
     from .src.dino_extractor import DINOFeatureExtractor
-    from .src.flux_pipeline import FLUXUpscalePipeline
     from .src.upscaler import BasicUpscaler
     from .src.comfyui_sampler import ComfyUISamplerWrapper
 except ImportError:
     # Fall back to absolute import (when loaded by ComfyUI)
     from src.dino_extractor import DINOFeatureExtractor
-    from src.flux_pipeline import FLUXUpscalePipeline
     from src.upscaler import BasicUpscaler
     from src.comfyui_sampler import ComfyUISamplerWrapper
 
@@ -47,7 +45,6 @@ class DINOUpscale:
     def __init__(self):
         """Initialize node (models loaded lazily on first use)"""
         self.dino_extractor = None
-        self.flux_pipeline = None
         self.comfyui_sampler = None
         self.upscaler = None
     
@@ -94,12 +91,8 @@ class DINOUpscale:
                     "default": "normal"
                 }),
                 
-                "flux_variant": (["schnell", "dev"], {
-                    "default": "schnell"
-                }),
-                
                 "steps": ("INT", {
-                    "default": 4,
+                    "default": 20,
                     "min": 1,
                     "max": 100,
                     "step": 1
@@ -140,45 +133,34 @@ class DINOUpscale:
     FUNCTION = "upscale"
     CATEGORY = "image/upscaling"
     
-    def _initialize_models(self, flux_variant, scale_factor, dino_enabled, model=None, vae=None):
+    def _initialize_models(self, scale_factor, dino_enabled, model=None, vae=None):
         """Lazy initialization of models on first use"""
-        # Use external model if provided (ComfyUI native)
-        if model is not None and vae is not None:
-            if self.comfyui_sampler is None:
-                print("[DINO Upscale] Using external model from workflow...")
-                self.comfyui_sampler = ComfyUISamplerWrapper(
-                    model=model,
-                    vae=vae,
-                    clip=None  # Will be added if needed
-                )
-                print("[DINO Upscale] ✓ ComfyUI native sampler initialized")
-                
-            if self.upscaler is None:
-                print("[DINO Upscale] Initializing upscaler with ComfyUI sampler...")
-                self.upscaler = BasicUpscaler(
-                    comfyui_sampler=self.comfyui_sampler,
-                    scale_factor=scale_factor,
-                    dino_extractor=None  # Will add if enabled
-                )
-                print("[DINO Upscale] ✓ Upscaler initialized (model-agnostic mode)")
-        else:
-            # Fall back to FLUX pipeline if no external model
-            if self.flux_pipeline is None:
-                print(f"[DINO Upscale] No external model provided, loading FLUX {flux_variant}...")
-                self.flux_pipeline = FLUXUpscalePipeline(
-                    variant=flux_variant,
-                    enable_offloading=True
-                )
-                print("[DINO Upscale] ✓ FLUX model loaded")
+        # Require external model - no more FLUX fallback
+        if model is None or vae is None:
+            raise ValueError(
+                "[DINO Upscale] ERROR: External MODEL and VAE are required!\n"
+                "Please connect a 'Load Checkpoint' node to the MODEL and VAE inputs.\n"
+                "This node no longer includes internal diffusion models."
+            )
+        
+        # Use external model (ComfyUI native)
+        if self.comfyui_sampler is None:
+            print("[DINO Upscale] Using external model from workflow...")
+            self.comfyui_sampler = ComfyUISamplerWrapper(
+                model=model,
+                vae=vae,
+                clip=None  # Will be added if needed
+            )
+            print("[DINO Upscale] ✓ ComfyUI native sampler initialized")
             
-            if self.upscaler is None:
-                print("[DINO Upscale] Initializing upscaler with FLUX...")
-                self.upscaler = BasicUpscaler(
-                    flux_pipeline=self.flux_pipeline,
-                    scale_factor=scale_factor,
-                    dino_extractor=None  # Will add if enabled
-                )
-                print("[DINO Upscale] ✓ Upscaler initialized (FLUX mode)")
+        if self.upscaler is None:
+            print("[DINO Upscale] Initializing upscaler...")
+            self.upscaler = BasicUpscaler(
+                comfyui_sampler=self.comfyui_sampler,
+                scale_factor=scale_factor,
+                dino_extractor=None  # Will add if enabled
+            )
+            print("[DINO Upscale] ✓ Upscaler initialized")
         
         if dino_enabled and self.dino_extractor is None:
             print("[DINO Upscale] Loading DINOv2 model...")
@@ -202,7 +184,7 @@ class DINOUpscale:
         return tiles_y * tiles_x
     
     def upscale(self, image, scale_factor, denoise, tile_size, sampler_name, scheduler,
-                flux_variant, steps, dino_enabled, dino_strength, seed, 
+                steps, dino_enabled, dino_strength, seed, 
                 model=None, vae=None, prompt="high quality, detailed, sharp"):
         """
         Main upscaling function
@@ -214,14 +196,13 @@ class DINOUpscale:
             tile_size: Output tile size (512-2048)
             sampler_name: Sampling algorithm to use
             scheduler: Noise schedule to use
-            flux_variant: "schnell" or "dev"
             steps: Number of inference steps
             dino_enabled: Whether to use DINO conditioning
             dino_strength: DINO conditioning strength (0.0-1.0)
             seed: Random seed for reproducibility
-            model: Optional external MODEL from workflow
-            vae: Optional external VAE from workflow
-            prompt: Text prompt for FLUX guidance
+            model: External MODEL from workflow (REQUIRED)
+            vae: External VAE from workflow (REQUIRED)
+            prompt: Text prompt for guidance
             
         Returns:
             Tuple of (upscaled_image_tensor,)
@@ -237,7 +218,7 @@ class DINOUpscale:
                 ProgressBar = None
             
             # Initialize models if needed
-            self._initialize_models(flux_variant, scale_factor, dino_enabled, model, vae)
+            self._initialize_models(scale_factor, dino_enabled, model, vae)
             
             # Update scale factor (in case it changed since initialization)
             if self.upscaler is not None:

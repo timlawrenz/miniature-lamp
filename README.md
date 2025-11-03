@@ -8,46 +8,44 @@ This project combines tiled upscaling with DINO semantic embeddings to maintain 
 
 **Key Features:**
 - 🎯 Semantic-aware upscaling using DINOv2 embeddings
-- 🚀 Compatible with any diffusion model (FLUX, Stable Diffusion, etc.)
+- 🚀 **Model-agnostic** - Works with ANY ComfyUI diffusion model (SD 1.5, SDXL, FLUX, etc.)
 - 🧩 Tiled processing for large images with seamless blending
-- 💾 Support for local models (offline usage)
+- 💾 Uses external models from your workflow (no internal model loading)
 - ⚙️ Configurable parameters for quality vs speed tradeoffs
+- 🎨 Lightweight - No FLUX dependencies
 
 ## Current Status
 
-- ✅ **Standalone Upscaler Complete:** DINO-guided upscaling with tiling
-- ✅ **ComfyUI Node Complete:** Ready-to-use custom node with external model support
+- ✅ **ComfyUI Node v2.0:** Model-agnostic upscaling via ComfyUI's native samplers
+- ✅ **Works with any model:** SD 1.5, SDXL, FLUX, and future models
 - 📋 **Available on ComfyUI Registry:** Install via ComfyUI Manager
 
 ## Installation
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd miniature-lamp
+### Via ComfyUI Manager (Recommended)
 
-# Install dependencies
+1. Open ComfyUI Manager
+2. Search for "DINO Upscale"
+3. Click Install
+4. Restart ComfyUI
+
+### Manual Installation
+
+```bash
+cd ComfyUI/custom_nodes/
+git clone https://github.com/timlawrenz/miniature-lamp.git comfyui-dino-upscale
+cd comfyui-dino-upscale
 pip install -r requirements.txt
+# Restart ComfyUI
 ```
 
 **Requirements:**
 - Python 3.8+
-- CUDA-capable GPU (8-12GB VRAM recommended)
-- Compatible diffusion model (FLUX, Stable Diffusion, etc.)
+- ComfyUI
+- CUDA-capable GPU (4GB+ VRAM recommended)
+- Any ComfyUI-compatible diffusion model
 
 ## Quick Start
-
-### ComfyUI Installation (Recommended)
-
-Install directly from ComfyUI Manager or manually:
-
-```bash
-cd ComfyUI/custom_nodes/
-git clone https://github.com/timlawrenz/miniature-lamp.git
-cd miniature-lamp
-pip install -r requirements.txt
-# Restart ComfyUI
-```
 
 The node will appear under: `Add Node` → `image` → `upscaling` → `DINO Upscale`
 

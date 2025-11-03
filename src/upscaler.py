@@ -14,9 +14,8 @@ except ImportError:
 
 
 class BasicUpscaler:
-    def __init__(self, flux_pipeline=None, comfyui_sampler=None, scale_factor=2.0, dino_extractor=None):
+    def __init__(self, comfyui_sampler=None, scale_factor=2.0, dino_extractor=None):
         self.scale_factor = scale_factor
-        self.flux_pipeline = flux_pipeline
         self.comfyui_sampler = comfyui_sampler
         self.dino_extractor = dino_extractor
     
@@ -37,14 +36,12 @@ class BasicUpscaler:
             image = np.array(image)
         
         if use_diffusion:
-            # Use ComfyUI sampler if available, otherwise FLUX
+            # Use ComfyUI sampler
             if self.comfyui_sampler is not None:
                 return self._upscale_with_comfyui(image, dino_features, **kwargs)
-            elif self.flux_pipeline is not None:
-                return self._upscale_with_flux(image, dino_features, **kwargs)
             else:
-                print("[Upscaler] Warning: No diffusion backend available, falling back to bicubic")
-                return self._upscale_bicubic(image)
+                print("[Upscaler] ERROR: No ComfyUI sampler available!")
+                raise ValueError("ComfyUI sampler is required for diffusion upscaling")
         else:
             # Fall back to bicubic
             return self._upscale_bicubic(image)
@@ -81,111 +78,6 @@ class BasicUpscaler:
             except Exception:
                 # Stop signal received
                 raise
-        
-        return result
-    
-    def _upscale_with_flux(self, image, dino_features=None, progress_callback=None, tile_size=1024, **flux_kwargs):
-        """FLUX-based upscaling with optional DINO conditioning"""
-        h, w = image.shape[:2]
-        
-        # If image is small enough, process directly
-        if h <= 512 and w <= 512:
-            # Extract DINO features if not provided
-            if dino_features is None and self.dino_extractor is not None:
-                dino_features = self.dino_extractor.extract_features(image)
-            
-            result = self.flux_pipeline.upscale_tile(
-                image,
-                dino_features=dino_features,
-                scale_factor=self.scale_factor,
-                **flux_kwargs
-            )
-            
-            # Update progress for single tile
-            if progress_callback:
-                try:
-                    progress_callback()
-                except Exception:
-                    # Stop signal received
-                    raise
-            
-            return result
-        
-        # Otherwise, use tiled processing
-        print(f"Image too large ({w}x{h}), using tiled processing...")
-        
-        # Calculate target dimensions (ensure integers)
-        target_h = int(h * self.scale_factor)
-        target_w = int(w * self.scale_factor)
-        
-        # Calculate input tile size based on output tile size and scale factor
-        # Output tile size must be divisible by 8 for FLUX
-        output_tile_size = ((tile_size + 4) // 8) * 8
-        input_tile_size = int(output_tile_size / self.scale_factor)
-        
-        # Ensure minimum tile size (don't go below 256 for quality)
-        input_tile_size = max(256, input_tile_size)
-        
-        # Scale overlap proportionally (typically 1/8 of tile size)
-        overlap = max(16, int(input_tile_size / 8))
-        
-        # Recalculate actual output tile size (may differ slightly from requested)
-        actual_output_tile_size = int(input_tile_size * self.scale_factor)
-        actual_output_tile_size = ((actual_output_tile_size + 4) // 8) * 8
-        
-        print(f"  Using {input_tile_size}x{input_tile_size} input tiles (→ {actual_output_tile_size}x{actual_output_tile_size} output)")
-        
-        # Generate tiles from original image
-        tiles = self.generate_tiles(image, tile_size=input_tile_size, overlap=overlap)
-        print(f"Processing {len(tiles)} tiles...")
-        
-        # Process each tile with FLUX
-        upscaled_tiles = []
-        for i, (tile, x, y) in enumerate(tiles):
-            # Check for stop signal before processing
-            if progress_callback:
-                try:
-                    progress_callback()
-                except Exception:
-                    print(f"  Stopped at tile {i+1}/{len(tiles)}")
-                    raise
-            
-            print(f"  Processing tile {i+1}/{len(tiles)}...")
-            
-            # Extract DINO features for this tile
-            tile_dino_features = None
-            if self.dino_extractor is not None:
-                tile_dino_features = self.dino_extractor.extract_features(tile)
-            
-            # Upscale this tile with FLUX and DINO guidance
-            upscaled_tile = self.flux_pipeline.upscale_tile(
-                tile,
-                dino_features=tile_dino_features,
-                scale_factor=self.scale_factor,
-                **flux_kwargs
-            )
-            
-            # Convert back to numpy for stitching
-            upscaled_tile_np = np.array(upscaled_tile)
-            
-            # Scale coordinates for upscaled image (ensure integers)
-            upscaled_tiles.append((
-                upscaled_tile_np,
-                int(x * self.scale_factor),
-                int(y * self.scale_factor)
-            ))
-            
-            # Clear GPU memory between tiles
-            self.flux_pipeline.clear_memory()
-        
-        # Stitch upscaled tiles together
-        print("Stitching tiles...")
-        result = self.stitch_tiles(
-            upscaled_tiles,
-            output_size=(target_w, target_h),
-            tile_size=actual_output_tile_size,
-            overlap=int(overlap * self.scale_factor)
-        )
         
         return result
     
