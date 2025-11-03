@@ -35,29 +35,33 @@ class ComfyUISamplerWrapper:
             image_tensor: Image tensor in ComfyUI format [B, H, W, C]
             
         Returns:
-            Latent tensor [B, C, H//8, W//8]
+            Latent tensor dict {"samples": tensor [B, C, H//8, W//8]}
         """
-        # Ensure tensor is on CPU and float
+        # Validate input
         if not isinstance(image_tensor, torch.Tensor):
             raise TypeError(f"Expected torch.Tensor, got {type(image_tensor)}")
-        
-        # Debug: Print actual shape
-        print(f"[ComfyUI Sampler] encode_image input shape: {image_tensor.shape}")
         
         # Verify shape [B, H, W, C]
         if image_tensor.ndim != 4:
             raise ValueError(f"Expected 4D tensor [B, H, W, C], got shape {image_tensor.shape}")
         
+        # Verify last dimension is channels (should be 3 for RGB)
+        if image_tensor.shape[-1] != 3:
+            raise ValueError(f"Expected last dimension to be 3 (RGB channels), got shape {image_tensor.shape}")
+        
         # Convert from ComfyUI format [B, H, W, C] to VAE format [B, C, H, W]
-        # Move channel dimension from last (-1) to second (1)
-        pixels = image_tensor.permute(0, 3, 1, 2)
+        # Using permute which is more explicit and reliable than movedim
+        # permute(0, 3, 1, 2) means: keep batch (0), move channels (3) to position 1,
+        # keep height (1) at position 2, keep width (2) at position 3
+        pixels = image_tensor.permute(0, 3, 1, 2).contiguous()
         
-        print(f"[ComfyUI Sampler] After permute shape: {pixels.shape}")
+        # ComfyUI VAE expects samples to be in a specific range and format
+        # The encode method expects pixels in range [0, 1] in format [B, C, H, W]
+        # ComfyUI's VAE.encode() handles device transfer internally
+        t = self.vae.encode(pixels)
         
-        # Encode to latent
-        latent = self.vae.encode(pixels)
-        
-        return latent
+        # Return as latent dict like ComfyUI expects
+        return {"samples": t}
     
     def decode_latent(self, latent):
         """
@@ -73,7 +77,8 @@ class ComfyUISamplerWrapper:
         pixels = self.vae.decode(latent)
         
         # Convert back to ComfyUI format [B, C, H, W] -> [B, H, W, C]
-        image = pixels.movedim(1, -1)
+        # Using permute for reliability: (0, 2, 3, 1) moves channels to last position
+        image = pixels.permute(0, 2, 3, 1).contiguous()
         
         return image
     
@@ -126,7 +131,8 @@ class ComfyUISamplerWrapper:
             image_tensor = image
         
         # Encode to latent
-        latent = self.encode_image(image_tensor)
+        latent_dict = self.encode_image(image_tensor)
+        latent = latent_dict["samples"]
         
         # Upscale latent using bicubic
         h, w = latent.shape[2:]
