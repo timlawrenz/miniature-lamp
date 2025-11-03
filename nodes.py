@@ -121,6 +121,7 @@ class DINOUpscale:
             "optional": {
                 "model": ("MODEL",),
                 "vae": ("VAE",),
+                "clip": ("CLIP",),
                 "prompt": ("STRING", {
                     "default": "high quality, detailed, sharp",
                     "multiline": True
@@ -133,7 +134,7 @@ class DINOUpscale:
     FUNCTION = "upscale"
     CATEGORY = "image/upscaling"
     
-    def _initialize_models(self, scale_factor, dino_enabled, model=None, vae=None):
+    def _initialize_models(self, scale_factor, dino_enabled, model=None, vae=None, clip=None):
         """Lazy initialization of models on first use"""
         # Require external model - no more FLUX fallback
         if model is None or vae is None:
@@ -149,9 +150,12 @@ class DINOUpscale:
             self.comfyui_sampler = ComfyUISamplerWrapper(
                 model=model,
                 vae=vae,
-                clip=None  # Will be added if needed
+                clip=clip
             )
             print("[DINO Upscale] ✓ ComfyUI native sampler initialized")
+        else:
+            # Update CLIP if it changes
+            self.comfyui_sampler.clip = clip
             
         if self.upscaler is None:
             print("[DINO Upscale] Initializing upscaler...")
@@ -185,7 +189,7 @@ class DINOUpscale:
     
     def upscale(self, image, scale_factor, denoise, tile_size, sampler_name, scheduler,
                 steps, dino_enabled, dino_strength, seed, 
-                model=None, vae=None, prompt="high quality, detailed, sharp"):
+                model=None, vae=None, clip=None, prompt="high quality, detailed, sharp"):
         """
         Main upscaling function
         
@@ -218,7 +222,7 @@ class DINOUpscale:
                 ProgressBar = None
             
             # Initialize models if needed
-            self._initialize_models(scale_factor, dino_enabled, model, vae)
+            self._initialize_models(scale_factor, dino_enabled, model, vae, clip)
             
             # Update scale factor (in case it changed since initialization)
             if self.upscaler is not None:

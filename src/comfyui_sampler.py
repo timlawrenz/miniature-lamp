@@ -97,6 +97,8 @@ class ComfyUISamplerWrapper:
         scheduler="normal",
         positive_conditioning=None,
         negative_conditioning=None,
+        positive_prompt=None,
+        negative_prompt=None,
         seed=0,
         dino_features=None
     ):
@@ -111,8 +113,10 @@ class ComfyUISamplerWrapper:
             cfg: CFG scale
             sampler_name: Sampler algorithm
             scheduler: Noise schedule
-            positive_conditioning: Positive CONDITIONING from CLIP
-            negative_conditioning: Negative CONDITIONING from CLIP
+            positive_conditioning: Positive CONDITIONING from CLIP (if provided directly)
+            negative_conditioning: Negative CONDITIONING from CLIP (if provided directly)
+            positive_prompt: Text prompt to encode (if CLIP available)
+            negative_prompt: Negative text prompt to encode (if CLIP available)
             seed: Random seed
             dino_features: Optional DINO features (not yet used)
             
@@ -155,10 +159,23 @@ class ComfyUISamplerWrapper:
         
         # Prepare conditioning
         if positive_conditioning is None:
-            # Create empty conditioning if none provided
-            positive_conditioning = [[torch.zeros((1, 77, 768)), {}]]
+            # Try to encode prompt if CLIP is available
+            if self.clip is not None and positive_prompt is not None:
+                tokens = self.clip.tokenize(positive_prompt)
+                positive_conditioning = self.clip.encode_from_tokens_scheduled(tokens)
+            else:
+                # Create empty conditioning without pooled_output for models that don't need it
+                # For FLUX/SDXL models, this will fail - they need CLIP
+                positive_conditioning = [[torch.zeros((1, 77, 768)), {}]]
+                
         if negative_conditioning is None:
-            negative_conditioning = [[torch.zeros((1, 77, 768)), {}]]
+            # Try to encode negative prompt if CLIP is available
+            if self.clip is not None and negative_prompt is not None:
+                tokens = self.clip.tokenize(negative_prompt)
+                negative_conditioning = self.clip.encode_from_tokens_scheduled(tokens)
+            else:
+                # Create empty conditioning
+                negative_conditioning = [[torch.zeros((1, 77, 768)), {}]]
         
         # Sample using ComfyUI's native sampler
         batch_inds = latent_dict.get("batch_index", None)

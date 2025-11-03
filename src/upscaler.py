@@ -55,7 +55,7 @@ class BasicUpscaler:
     
     def _upscale_with_comfyui(self, image, dino_features=None, progress_callback=None, 
                               sampler_name="euler", scheduler="normal", steps=20, 
-                              denoise=0.4, cfg=7.0, seed=0, **kwargs):
+                              denoise=0.4, cfg=7.0, seed=0, prompt=None, **kwargs):
         """ComfyUI native upscaling with model-agnostic sampling"""
         # TODO: Integrate DINO features into conditioning
         # For now, just use the sampler without DINO
@@ -68,6 +68,8 @@ class BasicUpscaler:
             sampler_name=sampler_name,
             scheduler=scheduler,
             seed=seed,
+            positive_prompt=prompt,
+            negative_prompt="",
             dino_features=dino_features
         )
         
