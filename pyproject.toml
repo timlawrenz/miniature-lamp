@@ -1,0 +1,38 @@
+[project]
+name = "comfyui-dino-upscale"
+description = "DINO-guided upscaler for ComfyUI with semantic-aware image enhancement"
+version = "1.0.0"
+license = {file = "LICENSE.txt"} 
+classifiers = [
+    "Operating System :: OS Independent",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Environment :: GPU :: AMD ROCm",
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "numpy>=1.24.0",
+    "pillow>=9.5.0",
+    "transformers>=4.30.0",
+    "diffusers>=0.27.0",
+    "accelerate>=0.27.0",
+    "safetensors>=0.4.0",
+    "sentencepiece>=0.1.99",
+    "protobuf>=3.20.0",
+    "opencv-python>=4.7.0",
+]
+
+[project.urls]
+Repository = "https://github.com/timlawrenz/miniature-lamp"
+#  Used by Comfy Registry https://registry.comfy.org
+Documentation = "https://github.com/timlawrenz/miniature-lamp/wiki"
+"Bug Tracker" = "https://github.com/timlawrenz/miniature-lamp/issues"
+
+[tool.comfy]
+PublisherId = "timlawrenz"
+DisplayName = "DINO Upscale"
+Icon = "https://raw.githubusercontent.com/timlawrenz/miniature-lamp/main/thumbnail.png"
+includes = [] 
+# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
+
