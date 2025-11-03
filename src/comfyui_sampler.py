@@ -41,6 +41,9 @@ class ComfyUISamplerWrapper:
         if not isinstance(image_tensor, torch.Tensor):
             raise TypeError(f"Expected torch.Tensor, got {type(image_tensor)}")
         
+        # Debug: Print actual shape
+        print(f"[ComfyUI Sampler] encode_image input shape: {image_tensor.shape}")
+        
         # Verify shape [B, H, W, C]
         if image_tensor.ndim != 4:
             raise ValueError(f"Expected 4D tensor [B, H, W, C], got shape {image_tensor.shape}")
@@ -48,6 +51,8 @@ class ComfyUISamplerWrapper:
         # Convert from ComfyUI format [B, H, W, C] to VAE format [B, C, H, W]
         # Move channel dimension from last (-1) to second (1)
         pixels = image_tensor.permute(0, 3, 1, 2)
+        
+        print(f"[ComfyUI Sampler] After permute shape: {pixels.shape}")
         
         # Encode to latent
         latent = self.vae.encode(pixels)
