@@ -37,11 +37,20 @@ class ComfyUISamplerWrapper:
         Returns:
             Latent tensor [B, C, H//8, W//8]
         """
+        # Ensure tensor is on CPU and float
+        if not isinstance(image_tensor, torch.Tensor):
+            raise TypeError(f"Expected torch.Tensor, got {type(image_tensor)}")
+        
+        # Verify shape [B, H, W, C]
+        if image_tensor.ndim != 4:
+            raise ValueError(f"Expected 4D tensor [B, H, W, C], got shape {image_tensor.shape}")
+        
         # Convert from ComfyUI format [B, H, W, C] to VAE format [B, C, H, W]
-        pixels = image_tensor.movedim(-1, 1)
+        # Move channel dimension from last (-1) to second (1)
+        pixels = image_tensor.permute(0, 3, 1, 2)
         
         # Encode to latent
-        latent = self.vae.encode(pixels[:, :, :, :])
+        latent = self.vae.encode(pixels)
         
         return latent
     
