@@ -54,8 +54,8 @@ class BasicUpscaler:
         return Image.fromarray(upscaled)
     
     def _upscale_with_comfyui(self, image, dino_features=None, progress_callback=None, 
-                              sampler_name="euler", scheduler="normal", steps=20, 
-                              denoise=0.4, cfg=7.0, seed=0, prompt=None, 
+                              preview_callback=None, sampler_name="euler", scheduler="normal", 
+                              steps=20, denoise=0.4, cfg=7.0, seed=0, prompt=None, 
                               tile_size=1024, **kwargs):
         """ComfyUI native upscaling with tiled processing"""
         from PIL import Image
@@ -89,7 +89,8 @@ class BasicUpscaler:
                 seed=seed,
                 positive_prompt=prompt,
                 negative_prompt="",
-                dino_features=dino_features
+                dino_features=dino_features,
+                preview_callback=preview_callback
             )
             if progress_callback:
                 try:
@@ -120,7 +121,8 @@ class BasicUpscaler:
                 seed=seed + i,  # Different seed per tile for variation
                 positive_prompt=prompt,
                 negative_prompt="",
-                dino_features=None  # TODO: Extract DINO features per tile
+                dino_features=None,  # TODO: Extract DINO features per tile
+                preview_callback=preview_callback
             )
             
             # Convert back to numpy

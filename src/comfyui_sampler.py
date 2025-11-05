@@ -100,7 +100,8 @@ class ComfyUISamplerWrapper:
         positive_prompt=None,
         negative_prompt=None,
         seed=0,
-        dino_features=None
+        dino_features=None,
+        preview_callback=None
     ):
         """
         Upscale image using ComfyUI's native sampling
@@ -119,6 +120,7 @@ class ComfyUISamplerWrapper:
             negative_prompt: Negative text prompt to encode (if CLIP available)
             seed: Random seed
             dino_features: Optional DINO features (not yet used)
+            preview_callback: Optional callback for preview images (receives decoded image tensor)
             
         Returns:
             Upscaled PIL Image
@@ -177,6 +179,22 @@ class ComfyUISamplerWrapper:
                 # Create empty conditioning
                 negative_conditioning = [[torch.zeros((1, 77, 768)), {}]]
         
+        # Create preview callback wrapper if preview requested
+        sampler_callback = None
+        if preview_callback is not None:
+            def sampler_callback_wrapper(step, x0, x, total_steps):
+                """Decode latent and emit preview (ComfyUI callback signature)"""
+                try:
+                    # Decode predicted denoised latent (x0) to image
+                    decoded_image = self.decode_latent(x0)
+                    # Call user's preview callback with decoded image
+                    preview_callback(decoded_image)
+                except Exception as e:
+                    # Don't crash sampling if preview fails
+                    print(f"[ComfyUI Sampler] Preview callback error: {e}")
+            
+            sampler_callback = sampler_callback_wrapper
+        
         # Sample using ComfyUI's native sampler
         batch_inds = latent_dict.get("batch_index", None)
         noise = comfy.sample.prepare_noise(upscaled_latent, seed, batch_inds)
@@ -197,7 +215,7 @@ class ComfyUISamplerWrapper:
             last_step=None,
             force_full_denoise=True,
             noise_mask=None,
-            callback=None,
+            callback=sampler_callback,
             disable_pbar=False,
             seed=seed
         )

@@ -241,6 +241,26 @@ class DINOUpscale:
             # Create progress bar (also handles stop button)
             pbar = ProgressBar(num_tiles) if has_progress else None
             
+            # Create preview callback for tile previews
+            def preview_callback(decoded_image):
+                """Send preview to ComfyUI UI"""
+                try:
+                    # decoded_image is already in ComfyUI format [1, H, W, C] on CPU
+                    # Send preview through ProgressBar mechanism
+                    if pbar is not None:
+                        # Convert to numpy for preview
+                        import numpy as np
+                        preview_np = (decoded_image[0].cpu().numpy() * 255).astype(np.uint8)
+                        from PIL import Image
+                        preview_pil = Image.fromarray(preview_np)
+                        
+                        # ComfyUI expects preview as ("format", PIL.Image, max_size)
+                        preview_bytes = ("JPEG", preview_pil, 512)
+                        pbar.update_absolute(pbar.current, pbar.total, preview_bytes)
+                except Exception as e:
+                    # Don't crash on preview errors
+                    pass
+            
             # Convert ComfyUI tensor to PIL (process first image in batch)
             print(f"[DINO Upscale] Processing image {image.shape}")
             pil_image = comfyui_to_pil(image, batch_index=0)
@@ -252,7 +272,7 @@ class DINOUpscale:
                 dino_features = self.dino_extractor.extract_features(pil_image)
                 print(f"[DINO Upscale] ✓ Extracted {dino_features.shape[0]} patch features")
             
-            # Upscale using our existing code with progress callback
+            # Upscale using our existing code with progress and preview callbacks
             print(f"[DINO Upscale] Upscaling {scale_factor}x with denoise={denoise}, tile_size={tile_size}")
             print(f"[DINO Upscale] Sampler: {sampler_name}, Scheduler: {scheduler}")
             result_pil = self.upscaler.upscale(
@@ -267,7 +287,8 @@ class DINOUpscale:
                 tile_size=tile_size,
                 sampler_name=sampler_name,
                 scheduler=scheduler,
-                progress_callback=lambda: pbar.update(1) if pbar else None
+                progress_callback=lambda: pbar.update(1) if pbar else None,
+                preview_callback=preview_callback
             )
             
             # Convert result back to ComfyUI tensor
