@@ -5,6 +5,11 @@
   - Provides an alternative noise schedule for sampling
   - useful for specific artistic effects or model requirements
 
+### Fixed
+- **Project Structure**: Corrected directory layout by moving all files from `comfyui-dino-upscale` subfolder to root
+  - Ensures correct installation via ComfyUI Manager
+  - Removed redundant/broken legacy scripts (`flux_poc.py`, etc.)
+
 ## [2.1.0] - 2024-11-05
 
 ### Added

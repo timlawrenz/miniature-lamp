@@ -245,8 +245,6 @@ pytest tests/ -v
 # Run with debug logging
 python examples/simple_poc.py image.jpg 2>&1 | tee debug.log
 
-# Systematic debugging
-./debug_upscale.sh image.jpg
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
