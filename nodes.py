@@ -87,7 +87,7 @@ class DINOUpscale:
                     "default": "euler"
                 }),
                 
-                "scheduler": (["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform"], {
+                "scheduler": (["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform", "beta"], {
                     "default": "normal"
                 }),
                 
