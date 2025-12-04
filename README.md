@@ -325,7 +325,7 @@ The DINO Upscale node can be used in ComfyUI workflows with the following parame
 | `denoise` | FLOAT | 0.2 | 0.0-1.0 | Img2img denoising strength |
 | `tile_size` | INT | 1024 | 512-2048 | Output tile dimensions (SD: 512, FLUX: 1024, SDXL: 1024) |
 | `sampler_name` | DROPDOWN | euler | - | Sampling algorithm (euler, dpmpp_2m, etc.) |
-| `scheduler` | DROPDOWN | normal | - | Noise schedule (normal, karras, exponential, etc.) |
+| `scheduler` | DROPDOWN | normal | - | Noise schedule (normal, karras, exponential, etc.) **¹** |
 | `steps` | INT | 20 | 1-100 | Number of inference steps |
 | `dino_enabled` | BOOLEAN | True | - | Enable DINO semantic guidance |
 | `dino_strength` | FLOAT | 0.5 | 0.0-1.0 | DINO conditioning weight |
@@ -338,6 +338,8 @@ The DINO Upscale node can be used in ComfyUI workflows with the following parame
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `prompt` | STRING | Text prompt for guidance |
+
+**¹ Scheduler and Sampler Discovery:** The node automatically detects all available schedulers and samplers from ComfyUI, including any custom ones installed via custom nodes. This means if you install a custom scheduler (like FlowMatchEulerDiscreteScheduler), it will automatically appear in the dropdown without needing to update the node code.
 
 ### Parameter Guide
 

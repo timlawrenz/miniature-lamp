@@ -51,6 +51,18 @@ class DINOUpscale:
     @classmethod
     def INPUT_TYPES(cls):
         """Define node inputs"""
+        # Import scheduler and sampler lists from ComfyUI to automatically include custom ones
+        try:
+            import comfy.samplers
+            scheduler_list = comfy.samplers.KSampler.SCHEDULERS
+            sampler_list = comfy.samplers.KSampler.SAMPLERS
+        except (ImportError, AttributeError):
+            # Fallback to default lists if ComfyUI sampler import fails
+            scheduler_list = ["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform", "beta"]
+            sampler_list = ["euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "lms", 
+                           "dpm_fast", "dpm_adaptive", "dpmpp_2s_a", "dpmpp_2m", 
+                           "dpmpp_2m_sde", "dpmpp_3m_sde", "ddim", "uni_pc", "uni_pc_bh2"]
+        
         return {
             "required": {
                 # Input image
@@ -81,13 +93,11 @@ class DINOUpscale:
                     "step": 64
                 }),
                 
-                "sampler_name": (["euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "lms", 
-                                 "dpm_fast", "dpm_adaptive", "dpmpp_2s_a", "dpmpp_2m", 
-                                 "dpmpp_2m_sde", "dpmpp_3m_sde", "ddim", "uni_pc", "uni_pc_bh2"], {
+                "sampler_name": (sampler_list, {
                     "default": "euler"
                 }),
                 
-                "scheduler": (["normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform", "beta"], {
+                "scheduler": (scheduler_list, {
                     "default": "normal"
                 }),
                 

@@ -1,3 +1,30 @@
+## [2.3.0] - 2025-12-04
+
+### Added
+- **Dynamic Scheduler and Sampler Discovery**: Node now automatically detects all available schedulers and samplers from ComfyUI
+  - Custom schedulers (like FlowMatchEulerDiscreteScheduler) automatically appear in dropdown
+  - Custom samplers installed via other custom nodes are automatically detected
+  - Matches behavior of built-in ComfyUI samplers (KSampler, KSampler Advanced)
+  - No need to manually update node code when installing custom schedulers
+  - Graceful fallback to default lists if ComfyUI imports fail (for standalone testing)
+
+### Technical Details
+- Modified `INPUT_TYPES()` to import `comfy.samplers.KSampler.SCHEDULERS` and `.SAMPLERS`
+- Added try/except wrapper with fallback to sensible defaults
+- Both scheduler and sampler lists now dynamic for consistency
+- Zero breaking changes - fully backward compatible
+
+### Benefits
+- ✅ Automatically supports all custom schedulers without code updates
+- ✅ Future-proof for new schedulers and samplers
+- ✅ Consistent with ComfyUI's built-in sampler nodes
+- ✅ Better user experience when using custom sampling methods
+
+### Documentation
+- Added explanation in README.md parameter table
+- Created IMPLEMENTATION_NOTES.md with technical details
+- Created DYNAMIC_SCHEDULER_DISCOVERY.md with comprehensive documentation
+
 ## [2.2.0] - 2025-11-19
 
 ### Added
